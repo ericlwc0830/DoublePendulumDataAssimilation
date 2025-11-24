@@ -1,0 +1,4269 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <title>雙擺資料同化</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Tailwind CDN (只用 CSS，不用任何框架) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Lucide Icons (對應原本的 lucide-react icon) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+      :root {
+        --sim-stage-size: 288px;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+      input[type="range"] {
+        accent-color: #4f46e5;
+      }
+      .sidebar {
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+        color: #0f172a;
+        box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.04);
+      }
+      .sidebar-header {
+        padding: 1.75rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+      }
+      .sidebar-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.9rem;
+        border-radius: 999px;
+        background: #ede9fe;
+        font-size: 0.65rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #4f46e5;
+        font-weight: 600;
+      }
+      .sidebar-label::before {
+        content: "";
+        width: 0.4rem;
+        height: 0.4rem;
+        border-radius: 999px;
+        background: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+      }
+      .sidebar-header h1 {
+        margin-top: 1.1rem;
+        margin-bottom: 0.35rem;
+        font-size: 1.1rem;
+        color: #0f172a;
+        letter-spacing: -0.01em;
+      }
+      .sidebar-header p {
+        color: #475569;
+        font-size: 0.75rem;
+        text-transform: none;
+        letter-spacing: 0.08em;
+        line-height: 1.4;
+      }
+      .exp-nav-btn-base {
+        width: 100%;
+        padding: 0.85rem 1.25rem;
+        border-radius: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        text-align: left;
+        color: #0f172a;
+        background: transparent;
+        border: 1px solid transparent;
+        position: relative;
+        transition: all 0.2s ease;
+      }
+      .exp-nav-btn-base .nav-active-bar {
+        position: absolute;
+        left: 0.5rem;
+        top: 50%;
+        width: 3px;
+        height: 60%;
+        border-radius: 999px;
+        background: #4f46e5;
+        transform: translateY(-50%) scaleY(0);
+        transform-origin: top;
+        transition: transform 0.2s ease;
+      }
+      .exp-nav-btn-base[data-state="available"]:hover {
+        border-color: #c7d2fe;
+        background: #f5f3ff;
+        transform: translateX(4px);
+      }
+      .exp-nav-btn-base[data-state="active"] {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #312e81;
+      }
+      .exp-nav-btn-base[data-state="active"] .nav-active-bar {
+        transform: translateY(-50%) scaleY(1);
+      }
+      .exp-nav-btn-base[data-state="available"] {
+        background: #fff;
+        border-color: #e2e8f0;
+        color: #0f172a;
+      }
+      .exp-nav-btn-base[data-state="locked"] {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+      }
+      .nav-text {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        line-height: 1.2;
+      }
+      .nav-text .nav-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: inherit;
+      }
+      .nav-text .nav-caption {
+        font-size: 0.65rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: inherit;
+        opacity: 0.75;
+      }
+      .nav-lock-icon {
+        width: 0.9rem;
+        height: 0.9rem;
+        color: #c7c9e7;
+        transition: opacity 0.2s ease;
+        flex-shrink: 0;
+      }
+      .pane-header {
+        min-height: 50px;
+        display: flex;
+        align-items: center;
+      }
+      #pendulum-stage {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+      }
+      #pendulum-stage svg {
+        width: 100%;
+        height: 100%;
+      }
+      .sidebar-backdrop {
+        display: none;
+      }
+      body.sidebar-open {
+        overflow: hidden;
+      }
+      .config-warning-modal {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: rgba(15, 23, 42, 0.55);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+        z-index: 120;
+      }
+      .config-warning-modal[data-open="true"] {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .config-warning-card {
+        width: 100%;
+        max-width: 28rem;
+        background: #fff;
+        border-radius: 1rem;
+        box-shadow: 0 30px 60px rgba(15, 23, 42, 0.3);
+        padding: 2rem;
+        transform: translateY(16px);
+        transition: transform 0.25s ease;
+      }
+      .config-warning-modal[data-open="true"] .config-warning-card {
+        transform: translateY(0);
+      }
+      .stats-hist-panel {
+        height: var(--sim-stage-size);
+        min-height: var(--sim-stage-size);
+        max-height: var(--sim-stage-size);
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .stats-hist-panel > .stats-hist-grid {
+        flex: 1;
+        min-height: 0;
+      }
+      .stats-hist-grid {
+        height: 100%;
+        min-height: 0;
+      }
+      #stats-column .hist-chart {
+        min-height: clamp(60px, calc(var(--sim-stage-size) / 5), 120px);
+        transition: min-height 0.2s ease;
+      }
+      #stats-column[data-compressed="true"] .hist-chart {
+        min-height: clamp(50px, calc(var(--sim-stage-size) / 6), 100px);
+      }
+      @media (max-width: 1023px) {
+        .sidebar {
+          position: fixed;
+          inset: 0 auto 0 0;
+          height: 100vh;
+          transform: translateX(-100%);
+          z-index: 400;
+          box-shadow: 20px 0 60px rgba(15, 23, 42, 0.35);
+        }
+        .sidebar[data-open="true"] {
+          transform: translateX(0);
+        }
+        .sidebar-backdrop {
+          display: block;
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.4);
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s ease;
+          z-index: 350;
+        }
+        .sidebar-backdrop[data-open="true"] {
+          opacity: 1;
+          pointer-events: auto;
+          left: 20rem;
+        }
+        .max-w-7xl > header {
+          padding-top: 40px;
+        }
+      }
+      @media (min-width: 1024px) {
+        .sidebar {
+          position: relative;
+          transform: none !important;
+          box-shadow: inset -1px 0 0 rgba(15, 23, 42, 0.04);
+        }
+      }
+      @keyframes input-flash {
+        0% {
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.85);
+          border-color: rgba(239, 68, 68, 0.95);
+        }
+        60% {
+          box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.35);
+          border-color: rgba(239, 68, 68, 0.5);
+        }
+        100% {
+          box-shadow: none;
+        }
+      }
+      .input-error-flash {
+        animation: input-flash 0.45s ease;
+        border-color: rgba(239, 68, 68, 0.95) !important;
+      }
+      .qc-alert {
+        position: absolute;
+        top: 0.65rem;
+        left: 50%;
+        transform: translate(-50%, -6px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.6s ease, transform 0.6s ease;
+        z-index: 25;
+      }
+      .qc-alert[data-visible="true"] {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      #next-page-btn {
+        right: 1.5rem;
+      }
+    </style>
+  </head>
+  <body class="bg-slate-100 text-slate-800">
+    <button
+      id="sidebar-toggle"
+      class="lg:hidden fixed top-4 left-4 z-40 flex items-center gap-2 px-3 py-2 rounded-full bg-white/90 border border-slate-200 shadow-lg text-slate-700 text-sm font-semibold"
+      aria-expanded="false"
+      aria-controls="sidebar"
+    >
+      <i data-lucide="menu" class="w-4 h-4"></i>
+      目錄
+    </button>
+    <div id="sidebar-backdrop" class="sidebar-backdrop" data-open="false"></div>
+    <div
+      id="app"
+      class="flex w-full h-screen bg-slate-100 text-slate-800 overflow-hidden"
+    >
+      <!-- Sidebar -->
+      <aside
+        id="sidebar"
+        data-open="false"
+        class="sidebar w-80 flex-none flex flex-col h-full overflow-y-auto z-200000"
+      >
+        <div class="sidebar-header sticky top-0 z-10">
+          <span class="sidebar-label">台大大氣 - 資料同化課程期末專題</span>
+          <h1 class="font-semibold tracking-tight">
+            以 OI 與 EKF 對雙擺進行觀測系統模擬實驗
+          </h1>
+          <p>
+            Double Pendulum Observation System Simulation Experiment: Using OI &
+            EKF
+          </p>
+        </div>
+
+        <div id="exp-nav" class="flex-1 py-6 px-4 space-y-2">
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="intro"
+            data-state="active"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">研究簡介</span>
+              <span class="nav-caption">Introduction</span>
+            </div>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="setup"
+            data-state="available"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">系統參數設定</span>
+              <span class="nav-caption">Configuration</span>
+            </div>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp0"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">實驗 0: 不進行資料同化</span>
+              <span class="nav-caption"
+                >Simulation without Data Assimilation</span
+              >
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp1"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">實驗 1: 對照組 (觀測即分析)</span>
+              <span class="nav-caption">Benchmark: Obs is Analysis</span>
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp2"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">實驗 2: 最佳內插法 (OI)</span>
+              <span class="nav-caption">Optimal Interpolation (OI)</span>
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp3"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">實驗 3: 擴展卡爾曼濾波器 (EKF)</span>
+              <span class="nav-caption">Extended Kalman Filter (EKF)</span>
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp4"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title"
+                >實驗 4: 擴展卡爾曼濾波器 + 模擬誤差倍數膨脹</span
+              >
+              <span class="nav-caption"
+                >EKF + Background Covariance Inflation</span
+              >
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp5"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title"
+                >實驗 5: 擴展卡爾曼濾波器 + 模擬誤差倍數膨脹 +
+                模擬值資料品管</span
+              >
+              <span class="nav-caption">EKF + Inflation + QC</span>
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+
+          <button
+            class="exp-nav-btn-base"
+            data-exp-id="exp6"
+            data-state="locked"
+          >
+            <div class="nav-active-bar"></div>
+            <div class="nav-text">
+              <span class="nav-title">實驗 6: 僅觀測角度</span>
+              <span class="nav-caption">Only Observe Angles</span>
+            </div>
+            <i
+              data-lucide="lock"
+              class="nav-lock-icon ml-auto hidden"
+              aria-hidden="true"
+            ></i>
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="flex-1 flex flex-col min-w-0 h-full relative bg-slate-100">
+        <div class="flex-1 overflow-y-auto scroll-smooth">
+          <div class="max-w-7xl mx-auto p-8 space-y-8 pb-32">
+            <!-- Header -->
+            <header class="border-b border-slate-200 pb-4 mb-6">
+              <div
+                class="flex items-center gap-2 text-indigo-500 text-sm font-medium mb-2"
+              >
+                <span>研究專題</span>
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                <span id="exp-subtitle" class="uppercase tracking-wider"
+                  >Introduction</span
+                >
+              </div>
+              <h2 id="exp-title" class="text-3xl font-bold text-slate-900">
+                研究簡介
+              </h2>
+            </header>
+
+            <!-- Setup Panel -->
+            <section
+              id="setup-panel"
+              class="bg-white p-8 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden hidden"
+            >
+              <div class="absolute top-0 right-0 p-4">
+                <i
+                  data-lucide="lock"
+                  class="text-slate-100 w-24 h-24 -rotate-12"
+                ></i>
+              </div>
+              <h3
+                class="text-lg font-semibold mb-6 text-slate-700 flex items-center gap-2 relative z-10"
+              >
+                <i data-lucide="settings" class="w-5 h-5"></i>
+                核心物理與觀測參數設定
+              </h3>
+
+              <div
+                class="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-800 text-sm flex gap-3 items-start relative z-10"
+              >
+                <i
+                  data-lucide="alert-octagon"
+                  class="w-5 h-5 flex-shrink-0 mt-0.5"
+                ></i>
+                <div>
+                  <p class="font-bold mb-1">重要警告：參數修改風險</p>
+                  <p>
+                    本研究之推論與結論係基於此參數組合之實驗結果。若調整參數（如觀測誤差、同化週期或初始條件），可能會導致觀測模擬實驗系統之動力特性改變，進而產生不同的實驗結果。建議保持預設值進行演示。
+                  </p>
+                </div>
+              </div>
+
+              <div
+                class="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6 relative z-10"
+              >
+                <!-- Left: 物理模型 -->
+                <div class="space-y-4">
+                  <h4
+                    class="text-sm font-semibold text-indigo-600 uppercase border-b border-indigo-100 pb-2"
+                  >
+                    物理模型 (真值)
+                  </h4>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-l1"
+                        >第一段擺長 (m)</label
+                      >
+                      <input
+                        id="cfg-l1"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-l2"
+                        >第二段擺長 (m)</label
+                      >
+                      <input
+                        id="cfg-l2"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-m1"
+                        >第一擺質量 (kg)</label
+                      >
+                      <input
+                        id="cfg-m1"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-m2"
+                        >第二擺質量 (kg)</label
+                      >
+                      <input
+                        id="cfg-m2"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-initTheta1"
+                        >初始擺角 1 (度)</label
+                      >
+                      <input
+                        id="cfg-initTheta1"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-initTheta2"
+                        >初始擺角 2 (度)</label
+                      >
+                      <input
+                        id="cfg-initTheta2"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: 模擬與觀測設定 -->
+                <div class="space-y-4">
+                  <h4
+                    class="text-sm font-semibold text-emerald-600 uppercase border-b border-emerald-100 pb-2"
+                  >
+                    模擬與觀測設定
+                  </h4>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-dt"
+                        >積分時步 (s)</label
+                      >
+                      <input
+                        id="cfg-dt"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-assim"
+                        >同化週期 (s)</label
+                      >
+                      <input
+                        id="cfg-assim"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-obsErrTheta"
+                        >角度觀測誤差 (度)</label
+                      >
+                      <input
+                        id="cfg-obsErrTheta"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        class="block text-xs text-slate-500 mb-1"
+                        for="cfg-obsErrOmega"
+                        >角速度觀測誤差 (度/秒)</label
+                      >
+                      <input
+                        id="cfg-obsErrOmega"
+                        type="text"
+                        readonly
+                        class="w-full p-2 border rounded text-sm bg-slate-50 text-slate-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <div class="col-span-2">
+                      <label
+                        class="block text-xs text-slate-500 mb-1 flex items-center gap-1"
+                        for="cfg-bgInflation"
+                      >
+                        <i data-lucide="chevrons-up" class="w-3 h-3"></i>
+                        背景共變異數膨脹倍數 (EKF)
+                      </label>
+                      <input
+                        id="cfg-bgInflation"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm"
+                        data-numeric-input="true"
+                      />
+                      <p class="mt-1 text-[11px] text-slate-500">
+                        指定有進行背景誤差共變異數矩陣膨脹的實驗要使用的放大倍數。
+                      </p>
+                    </div>
+                    <div class="col-span-2">
+                      <label
+                        class="block text-xs text-purple-500 mb-1 flex items-center gap-1"
+                        for="cfg-randomSeed"
+                      >
+                        <i data-lucide="hash" class="w-3 h-3"></i>
+                        觀測誤差隨機種子
+                      </label>
+                      <input
+                        id="cfg-randomSeed"
+                        type="text"
+                        class="w-full p-2 border rounded text-sm bg-purple-50 border-purple-100"
+                        data-numeric-input="true"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    id="run-sim-btn"
+                    class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                  >
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    <span>確認設定並開始實驗</span>
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <!-- Experiment Panel -->
+            <section
+              id="experiment-panel"
+              class="grid grid-cols-1 md:grid-cols-2 gap-8"
+            >
+            <div
+              id="intro-notice-card"
+              class="md:col-span-2 bg-amber-50/70 p-5 rounded-xl border border-amber-200 shadow-sm text-xs text-amber-800 leading-relaxed"
+            >
+              <h4 class="text-sm font-semibold mb-2 flex items-center gap-2">
+                <i data-lucide="info" class="w-4 h-4 text-amber-600"></i>
+                頁面重要說明
+              </h4>
+              <p>
+                本頁面使用 Gemini 3 Pro 建立，並且僅根據期末專題簡報 PDF 檔與課程簡報 PDF 檔生成 HTML 程式碼，目的在於檢驗 Gemini 3 Pro 生成式模型的能力。除對原始生成內容小部分修改外，並未對於所生成之資料同化演算法做進一步的檢查。一切實驗方法與結果應依照原始的期末專輯簡報與當時實驗之 python 程式碼為準。
+              </p>
+              <a
+                href="./ori_slides/index.html"
+                target="_blank"
+                rel="noopener"
+                class="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              >
+                <i data-lucide="book-open" class="w-3 h-3"></i>
+                查看期末專題簡報
+              </a>
+            </div>
+              <!-- 說明卡 -->
+              <div
+                class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+              >
+                <h3
+                  class="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-700"
+                >
+                  <i data-lucide="activity" class="w-4 h-4 text-indigo-500"></i>
+                  實驗說明
+                </h3>
+
+              <div
+                id="exp-desc-body"
+                class="space-y-2 mt-4 text-sm text-slate-600 leading-relaxed"
+              >
+                <!-- 由 JS 依 activeTab 填入 -->
+              </div>
+            </div>
+
+            <!-- 實驗流程卡 -->
+            <div
+              id="intro-flow-card"
+              class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200"
+            >
+              <h3
+                class="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-700"
+              >
+                <i data-lucide="map" class="w-4 h-4 text-indigo-500"></i>
+                實驗流程
+              </h3>
+
+              <div
+                id="exp-flow-body"
+                class="space-y-4 mt-3 text-sm text-slate-600 leading-relaxed"
+              >
+                <!-- 由 JS 依 EXPERIMENTS 填入 -->
+              </div>
+            </div>
+
+
+              <!-- 左邊：模擬播放 -->
+              <div id="simulation-column" class="space-y-6 hidden">
+                <div
+                  class="flex flex-col bg-slate-50 rounded-xl overflow-hidden border border-slate-200 shadow-sm h-full"
+                >
+                  <div
+                    class="px-4 py-3 bg-white border-b border-slate-200 flex justify-between items-center pane-header"
+                  >
+                    <h3
+                      class="text-sm font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      動態模擬播放
+                    </h3>
+                    <div class="flex gap-2 text-[10px]">
+                      <div
+                        id="badge-obs"
+                        class="px-2 py-1 rounded-md font-bold shadow-sm border bg-amber-50 text-amber-700 border-amber-300"
+                        style="opacity: 0.2"
+                      >
+                        觀測
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    id="simulation-stage-wrapper"
+                    class="relative flex items-center justify-center bg-slate-50 overflow-hidden aspect-square w-full"
+                  >
+                    <div id="qc-alert" class="qc-alert" data-visible="false">
+                      <div
+                        class="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/95 backdrop-blur border border-amber-200 shadow-md text-amber-800"
+                      >
+                        <i
+                          data-lucide="shield-alert"
+                          class="w-4 h-4 mt-0.5 text-amber-600"
+                        ></i>
+                        <div class="leading-tight">
+                          <p class="text-xs font-semibold">
+                            資料品管啟動：採信觀測
+                          </p>
+                          <p
+                            id="qc-alert-text"
+                            class="text-[11px] text-amber-700/80"
+                          >
+                            資料品管判定中…
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div
+                      id="pendulum-stage"
+                      class="flex items-center justify-center w-full"
+                    >
+                      <!-- Pendulum SVG -->
+                      <svg
+                        id="pendulum-svg"
+                        class="w-full h-full z-10"
+                        viewBox="-22 -22 44 44"
+                        preserveAspectRatio="xMidYMid meet"
+                      >
+                        <!-- flash 圓 -->
+                        <g id="flash-group" opacity="0">
+                          <circle
+                            id="flash-circle1"
+                            cx="0"
+                            cy="10"
+                            r="0.5"
+                            fill="#fcd34d"
+                          ></circle>
+                          <circle
+                            id="flash-circle2"
+                            cx="0"
+                            cy="20"
+                            r="0.5"
+                            fill="#fcd34d"
+                          ></circle>
+                        </g>
+
+                        <!-- model -->
+                        <g id="model-group" opacity="0.4">
+                          <line
+                            id="model-line1"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="10"
+                            stroke="#64748b"
+                            stroke-width="0.15"
+                            stroke-linecap="round"
+                          ></line>
+                          <line
+                            id="model-line2"
+                            x1="0"
+                            y1="10"
+                            x2="0"
+                            y2="20"
+                            stroke="#64748b"
+                            stroke-width="0.15"
+                            stroke-linecap="round"
+                          ></line>
+                          <circle
+                            id="model-bob1"
+                            cx="0"
+                            cy="10"
+                            r="0.5"
+                            fill="#64748b"
+                          ></circle>
+                          <circle
+                            id="model-bob2"
+                            cx="0"
+                            cy="20"
+                            r="0.5"
+                            fill="#64748b"
+                          ></circle>
+                        </g>
+
+                        <!-- nature -->
+                        <g id="nature-group">
+                          <line
+                            id="nature-line1"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="10"
+                            stroke="#ef4444"
+                            stroke-width="0.15"
+                            stroke-linecap="round"
+                          ></line>
+                          <line
+                            id="nature-line2"
+                            x1="0"
+                            y1="10"
+                            x2="0"
+                            y2="20"
+                            stroke="#3b82f6"
+                            stroke-width="0.15"
+                            stroke-linecap="round"
+                          ></line>
+                          <circle
+                            id="nature-bob1"
+                            cx="0"
+                            cy="10"
+                            r="0.5"
+                            fill="#ef4444"
+                          ></circle>
+                          <circle
+                            id="nature-bob2"
+                            cx="0"
+                            cy="20"
+                            r="0.5"
+                            fill="#3b82f6"
+                          ></circle>
+                        </g>
+                      </svg>
+                    </div>
+
+                    <!-- 小時鐘 -->
+                    <div
+                      class="absolute top-3 right-3 w-16 h-16 bg-white/80 backdrop-blur rounded-full border-2 border-slate-200 flex items-center justify-center shadow-sm z-20"
+                    >
+                      <div class="relative w-full h-full">
+                        <div
+                          id="mini-clock-hand"
+                          class="absolute top-1/2 left-1/2 w-0.5 h-6 bg-indigo-600 origin-bottom rounded-full"
+                          style="transform: translate(-50%, -100%) rotate(0deg)"
+                        ></div>
+                        <div
+                          class="absolute top-1/2 left-1/2 w-1.5 h-1.5 bg-slate-700 rounded-full -translate-x-1/2 -translate-y-1/2"
+                        ></div>
+                      </div>
+                      <div
+                        id="elapsed-label"
+                        class="absolute -bottom-5 text-[10px] font-mono text-slate-500"
+                      >
+                        0s
+                      </div>
+                    </div>
+
+                    <!-- 圖例 -->
+                    <div
+                      class="absolute top-3 left-3 text-[10px] text-slate-500 bg-white/90 px-2 py-1 rounded border border-slate-200 pointer-events-none z-20"
+                    >
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="w-2 h-2 rounded-full overflow-hidden flex">
+                          <div class="w-1 h-2 bg-red-500"></div>
+                          <div class="w-1 h-2 bg-blue-500"></div>
+                        </div>
+                        真實擺動
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <div
+                          class="w-2 h-2 rounded-full overflow-hidden flex opacity-60 bg-slate-600"
+                        ></div>
+                        模擬結果
+                      </div>
+                    </div>
+
+                    <!-- 播放控制 -->
+                    <div
+                      class="absolute inset-x-0 bottom-0 px-4 pb-4 z-30 pointer-events-none"
+                    >
+                      <div
+                        class="px-4 py-2 bg-white/95 backdrop-blur rounded-xl border border-slate-200 shadow flex items-center gap-4 pointer-events-auto"
+                      >
+                        <button
+                          id="play-pause-btn"
+                          class="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 hover:bg-indigo-200 transition-colors"
+                        >
+                          <i
+                            id="play-pause-icon"
+                            data-lucide="pause"
+                            class="w-3.5 h-3.5"
+                          ></i>
+                        </button>
+                        <div class="flex-1 flex flex-col justify-center">
+                          <input
+                            id="time-slider"
+                            type="range"
+                            min="0"
+                            max="200"
+                            step="0.1"
+                            value="0"
+                            class="w-full h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+                          />
+                          <div
+                            class="flex justify-between text-[10px] text-slate-400 mt-1"
+                          >
+                            <span>0s</span>
+                            <span id="time-display">0.0s / 200s</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 能量圖 -->
+                  <div class="px-4 py-2 bg-white border-t border-slate-100">
+                    <div class="flex justify-between items-center mb-1">
+                      <h4
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                      >
+                        系統能量演變 (位能 + 動能)
+                      </h4>
+                      <label
+                        class="flex items-center gap-1 text-[10px] cursor-pointer text-slate-600"
+                      >
+                        <input
+                          id="toggle-model-energy"
+                          type="checkbox"
+                          class="mr-1"
+                        />
+                        顯示模擬能量
+                      </label>
+                    </div>
+                    <div
+                      class="relative h-16 w-full bg-slate-50 border-t border-slate-200 overflow-hidden error-chart-wrapper"
+                    >
+                      <svg
+                        id="energy-chart"
+                        viewBox="0 0 600 100"
+                        class="w-full h-full"
+                        preserveAspectRatio="none"
+                      >
+                        <line
+                          x1="0"
+                          y1="100"
+                          x2="600"
+                          y2="100"
+                          stroke="#e2e8f0"
+                          stroke-width="1"
+                        ></line>
+                        <polyline
+                          id="energy-nPE"
+                          fill="none"
+                          stroke="#3b82f6"
+                          stroke-width="2"
+                        ></polyline>
+                        <polyline
+                          id="energy-nKE"
+                          fill="none"
+                          stroke="#ef4444"
+                          stroke-width="2"
+                        ></polyline>
+                        <polyline
+                          id="energy-mPE"
+                          fill="none"
+                          stroke="#1e40af"
+                          stroke-width="2"
+                          stroke-dasharray="4 4"
+                          opacity="0.7"
+                        ></polyline>
+                        <polyline
+                          id="energy-mKE"
+                          fill="none"
+                          stroke="#991b1b"
+                          stroke-width="2"
+                          stroke-dasharray="4 4"
+                          opacity="0.7"
+                        ></polyline>
+                      </svg>
+                      <div
+                        class="absolute top-1 right-2 flex gap-3 text-[10px]"
+                      >
+                        <span class="flex items-center gap-1 text-blue-500"
+                          ><div class="w-2 h-0.5 bg-blue-500"></div>
+                          總動能</span
+                        >
+                        <span class="flex items-center gap-1 text-red-500"
+                          ><div class="w-2 h-0.5 bg-red-500"></div>
+                          總位能</span
+                        >
+                      </div>
+                      <div
+                        id="energy-max-label"
+                        class="absolute top-1 left-1 text-[10px] text-slate-400 font-mono"
+                      >
+                        0J (Max)
+                      </div>
+                      <div
+                        class="absolute bottom-1 left-1 text-[10px] text-slate-400 font-mono"
+                      >
+                        0J
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 右邊：誤差統計 -->
+              <div
+                id="stats-column"
+                class="space-y-6 hidden"
+                data-compressed="false"
+              >
+                <div
+                  class="bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm h-full flex flex-col"
+                >
+                  <div
+                    class="px-4 py-3 bg-white border-b border-slate-200 flex justify-between items-center pane-header"
+                  >
+                    <h3
+                      class="text-sm font-semibold text-slate-500 uppercase tracking-wider"
+                    >
+                      系統狀態誤差統計
+                    </h3>
+                    <div
+                      class="flex items-center gap-2 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1"
+                    >
+                      <span class="font-semibold">Spin-up</span>
+                      <span id="spin-up-note" class="text-amber-700/80"></span>
+                      <script>
+                        window.addEventListener("load", function () {
+                          const el = document.getElementById("spin-up-note");
+                          if (!el) return;
+                          if (
+                            typeof SPIN_UP_SECONDS !== "undefined" &&
+                            Number.isFinite(SPIN_UP_SECONDS)
+                          ) {
+                            el.textContent =
+                              "前 " + SPIN_UP_SECONDS + " 秒不計入誤差統計";
+                          }
+                        });
+                      </script>
+                    </div>
+                  </div>
+
+                  <div
+                    class="p-4 bg-slate-50 flex-1 flex flex-col gap-4 stats-hist-panel"
+                  >
+                    <div
+                      class="grid grid-cols-2 gap-3 flex-1 auto-rows-fr stats-hist-grid"
+                    >
+                      <!-- 四個直方圖 -->
+                      <div
+                        id="hist-t1"
+                        class="bg-white p-3 rounded border border-slate-200 relative overflow-hidden shadow-sm flex flex-col"
+                      >
+                        <div class="flex justify-between items-start mb-2">
+                          <span class="text-xs font-bold text-slate-700"
+                            >擺角 1 誤差 (度)</span
+                          >
+                          <div
+                            class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                          >
+                            <div class="text-indigo-600" data-mean>
+                              平均: 0.00
+                            </div>
+                            <div class="text-slate-400" data-std>
+                              標準差: 0.00
+                            </div>
+                          </div>
+                        </div>
+                        <div class="relative flex-1 w-full mt-1 hist-chart">
+                          <svg
+                            data-hist-svg
+                            viewBox="0 0 100 100"
+                            class="w-full h-full"
+                            preserveAspectRatio="none"
+                          ></svg>
+                        </div>
+                        <div
+                          class="flex justify-between text-[9px] text-slate-400 mt-1 px-0 font-mono"
+                        >
+                          <span data-min>-1.00</span>
+                          <span>0</span>
+                          <span data-max>+1.00</span>
+                        </div>
+                      </div>
+
+                      <div
+                        id="hist-t2"
+                        class="bg-white p-3 rounded border border-slate-200 relative overflow-hidden shadow-sm flex flex-col"
+                      >
+                        <div class="flex justify-between items-start mb-2">
+                          <span class="text-xs font-bold text-slate-700"
+                            >擺角 2 誤差 (度)</span
+                          >
+                          <div
+                            class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                          >
+                            <div class="text-indigo-600" data-mean>
+                              平均: 0.00
+                            </div>
+                            <div class="text-slate-400" data-std>
+                              標準差: 0.00
+                            </div>
+                          </div>
+                        </div>
+                        <div class="relative flex-1 w-full mt-1 hist-chart">
+                          <svg
+                            data-hist-svg
+                            viewBox="0 0 100 100"
+                            class="w-full h-full"
+                            preserveAspectRatio="none"
+                          ></svg>
+                        </div>
+                        <div
+                          class="flex justify-between text-[9px] text-slate-400 mt-1 px-0 font-mono"
+                        >
+                          <span data-min>-1.00</span>
+                          <span>0</span>
+                          <span data-max>+1.00</span>
+                        </div>
+                      </div>
+
+                      <div
+                        id="hist-w1"
+                        class="bg-white p-3 rounded border border-slate-200 relative overflow-hidden shadow-sm flex flex-col"
+                      >
+                        <div class="flex justify-between items-start mb-2">
+                          <span class="text-xs font-bold text-slate-700"
+                            >角速度 1 誤差 (度/秒)</span
+                          >
+                          <div
+                            class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                          >
+                            <div class="text-indigo-600" data-mean>
+                              平均: 0.00
+                            </div>
+                            <div class="text-slate-400" data-std>
+                              標準差: 0.00
+                            </div>
+                          </div>
+                        </div>
+                        <div class="relative flex-1 w-full mt-1 hist-chart">
+                          <svg
+                            data-hist-svg
+                            viewBox="0 0 100 100"
+                            class="w-full h-full"
+                            preserveAspectRatio="none"
+                          ></svg>
+                        </div>
+                        <div
+                          class="flex justify-between text-[9px] text-slate-400 mt-1 px-0 font-mono"
+                        >
+                          <span data-min>-1.00</span>
+                          <span>0</span>
+                          <span data-max>+1.00</span>
+                        </div>
+                      </div>
+
+                      <div
+                        id="hist-w2"
+                        class="bg-white p-3 rounded border border-slate-200 relative overflow-hidden shadow-sm flex flex-col"
+                      >
+                        <div class="flex justify-between items-start mb-2">
+                          <span class="text-xs font-bold text-slate-700"
+                            >角速度 2 誤差 (度/秒)</span
+                          >
+                          <div
+                            class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
+                          >
+                            <div class="text-indigo-600" data-mean>
+                              平均: 0.00
+                            </div>
+                            <div class="text-slate-400" data-std>
+                              標準差: 0.00
+                            </div>
+                          </div>
+                        </div>
+                        <div class="relative flex-1 w-full mt-1 hist-chart">
+                          <svg
+                            data-hist-svg
+                            viewBox="0 0 100 100"
+                            class="w-full h-full"
+                            preserveAspectRatio="none"
+                          ></svg>
+                        </div>
+                        <div
+                          class="flex justify-between text-[9px] text-slate-400 mt-1 px-0 font-mono"
+                        >
+                          <span data-min>-1.00</span>
+                          <span>0</span>
+                          <span data-max>+1.00</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="px-4 py-2 bg-white border-t border-slate-100">
+                    <div class="flex justify-between items-center mb-1">
+                      <h4
+                        class="text-[10px] font-bold text-slate-400 uppercase tracking-wider"
+                      >
+                        系統狀態誤差演變
+                      </h4>
+                    </div>
+                    <div
+                      class="relative h-16 w-full bg-slate-50 border-t border-slate-200 overflow-hidden"
+                    >
+                      <svg
+                        id="error-chart"
+                        viewBox="0 0 600 100"
+                        class="w-full h-full"
+                        preserveAspectRatio="none"
+                      >
+                        <line
+                          x1="0"
+                          y1="50"
+                          x2="600"
+                          y2="50"
+                          stroke="#cbd5e1"
+                          stroke-width="1"
+                          stroke-dasharray="4 4"
+                        ></line>
+                        <polyline
+                          id="error-t1"
+                          fill="none"
+                          stroke="#ef4444"
+                          stroke-width="1.5"
+                        ></polyline>
+                        <polyline
+                          id="error-t2"
+                          fill="none"
+                          stroke="#3b82f6"
+                          stroke-width="1.5"
+                        ></polyline>
+                      </svg>
+                      <div
+                        id="error-max-label-top"
+                        class="absolute top-1 left-1 text-[9px] text-slate-400 font-mono"
+                      >
+                        +0.0°
+                      </div>
+                      <div
+                        id="error-max-label-bottom"
+                        class="absolute bottom-1 left-1 text-[9px] text-slate-400 font-mono"
+                      >
+                        -0.0°
+                      </div>
+                      <div
+                        class="absolute top-1 right-2 flex gap-3 text-[9px] bg-white/80 px-1 rounded"
+                      >
+                        <span class="flex items-center gap-1 text-red-500"
+                          ><div class="w-2 h-0.5 bg-red-500"></div>
+                          θ1 誤差</span
+                        >
+                        <span class="flex items-center gap-1 text-blue-500"
+                          ><div class="w-2 h-0.5 bg-blue-500"></div>
+                          θ2 誤差</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- 下一頁按鈕 -->
+        <button
+          id="next-page-btn"
+          class="fixed shadow-xl flex items-center gap-2 px-6 py-3 rounded-full font-bold transition-all duration-300 z-50 bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105"
+          style="bottom: 3rem"
+        >
+          <span id="next-page-text">下一頁</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+
+        <!-- RMSE Footer -->
+        <div
+          id="rmse-footer"
+          class="flex-none border-t border-slate-200 bg-white z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] transition-all duration-300 h-14 hidden"
+        >
+          <div class="max-w-7xl mx-auto px-4">
+            <div
+              id="rmse-footer-toggle"
+              class="flex items-center justify-between py-4 cursor-pointer text-slate-700 hover:text-indigo-600 transition-colors select-none"
+            >
+              <div class="flex items-center gap-2">
+                <i data-lucide="table" class="w-4 h-4"></i>
+                <span class="font-semibold text-sm"
+                  >實驗總結：均方根誤差 (RMSE) 統計比較</span
+                >
+                <span
+                  id="rmse-footer-hint"
+                  class="text-xs text-slate-400 font-normal ml-2"
+                  >(點擊展開)</span
+                >
+              </div>
+              <div class="flex items-center gap-4">
+                <i
+                  id="rmse-footer-icon"
+                  data-lucide="chevron-up"
+                  class="w-4 h-4"
+                ></i>
+              </div>
+            </div>
+
+            <div
+              id="rmse-footer-body"
+              class="pb-4 overflow-x-auto transition-all h-0 overflow-y-auto"
+            >
+              <table class="w-full text-xs text-left">
+                <thead
+                  class="text-slate-500 uppercase bg-slate-50 border-b border-slate-100 sticky top-0"
+                >
+                  <tr>
+                    <th class="px-4 py-2">實驗</th>
+                    <th class="px-4 py-2 text-right">θ1 標準差</th>
+                    <th class="px-4 py-2 text-right">θ2 標準差</th>
+                    <th class="px-4 py-2 text-right">ω1 標準差</th>
+                    <th class="px-4 py-2 text-right">ω2 標準差</th>
+                    <th class="px-4 py-2 text-center">備註</th>
+                  </tr>
+                </thead>
+                <tbody id="rmse-table-body">
+                  <!-- 由 JS 填入 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div
+      id="config-warning-modal"
+      class="config-warning-modal"
+      data-open="false"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="config-warning-title"
+    >
+      <div class="config-warning-card">
+        <div class="flex items-start gap-3 mb-6">
+          <div
+            class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center"
+          >
+            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <p
+              id="config-warning-title"
+              class="text-base font-semibold text-slate-900"
+            >
+              重要警告：參數調整風險
+            </p>
+            <p class="mt-2 text-sm leading-relaxed text-slate-600">
+              警告：偵測到您調整了預設參數，系統不建議大家更換這些數字，可能會影響實驗結果。仍要繼續下一步嗎？
+            </p>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3">
+          <button
+            id="config-warning-cancel"
+            type="button"
+            class="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            取消
+          </button>
+          <button
+            id="config-warning-confirm"
+            type="button"
+            class="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+          >
+            仍要繼續
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /*****************
+       * 參數 & 資料結構 *
+       *****************/
+      const SPIN_UP_SECONDS = 5;
+      const DEFAULT_CONFIG = {
+        g: 9.8,
+        l1: 10.0,
+        l2: 10.0,
+        m1: 1.0,
+        m2: 1.0,
+        dt: 0.005,
+        simulationDuration: 200.0,
+        assimilationCycle: 1.0,
+        initTheta1: 179.5,
+        initTheta2: 179.5,
+        obsErrTheta: 2.0,
+        obsErrOmega: Math.sqrt(2) * 2.0,
+        randomSeed: 4096,
+        backgroundInflation: 1.4,
+      };
+      const NUMERIC_CONFIG_KEYS = [
+        "l1",
+        "l2",
+        "m1",
+        "m2",
+        "dt",
+        "simulationDuration",
+        "assimilationCycle",
+        "initTheta1",
+        "initTheta2",
+        "obsErrTheta",
+        "obsErrOmega",
+        "randomSeed",
+        "backgroundInflation",
+      ];
+
+      const EXPERIMENTS = [
+        {
+          id: "intro",
+          title: "研究簡介",
+          subtitle: "Introduction",
+          content: {
+            summary:
+              "本研究利用雙擺（Double Pendulum）系統作為實驗平台，目的是驗證並比較各種資料同化方法在處理高度非線性、混沌系統時的表現與穩定性。",
+            points: [
+              "**混沌物理系統**：並非每一個物理模擬都只要使用力學的數值計算就能精確掌握未來運動軌跡。例如，混沌物理系統對初始條件極度敏感（口語上的蝴蝶效應），即使是微小的初始誤差或計算誤差，誤差隨著時間推移也會迅速放大，導致預測軌跡迅速發散，難以被掌握。",
+              "**雙擺系統介紹**：雙擺是最簡單的混沌物理系統之一。本實驗使用的雙擺由兩個質點和兩個質量可忽略的剛性擺臂組成，其運動的模擬由拉格朗日力學控制。",
+              "**資料同化概念**：雙擺運動狀態的觀測值有觀測誤差，模擬的運動狀態也有其模擬誤差，我們希望透過資料同化（Data Assimilation）技術，將觀測值與模擬值合理的結合，計算最能代表真實的雙擺狀態的分析值，並利用分析值繼續進行模擬，以取得下一個時刻的模擬值。此過程不斷重複，期望能有效掌握雙擺的運動軌跡。",
+            ],
+          },
+        },
+        {
+          id: "setup",
+          title: "系統參數設定",
+          subtitle: "Configuration",
+          content: {
+            desc: "在進入實驗前，請確認物理模型與觀測系統的參數設定。",
+          },
+        },
+        {
+          id: "exp0",
+          title: "實驗 0: 不進行資料同化",
+          subtitle: "Simulation Without Data Assimilation",
+          simulationMode: "chaos",
+          flowSummary:
+            "觀測初始狀態後完全依賴物理模型，顯示雙擺具備對初始值敏感的混沌特性。",
+          content: {
+            desc: "僅觀測初始狀態（觀測具有觀測誤差），之後完全依賴物理模型進行模擬，並藉此驗證雙擺具有混沌特性。",
+            result:
+              "驗證了混沌特性。模擬的雙擺即使與真實的雙擺一開始僅差了約 0.1度，約 10 秒後模擬的雙擺徹底無法掌握真實雙擺。",
+          },
+        },
+        {
+          id: "exp1",
+          title: "實驗 1: 觀測即分析：作為對照組",
+          subtitle: "Observation is Analysis: Benchmark Case",
+          simulationMode: "perfect",
+          flowSummary:
+            "不斷使用帶有觀測誤差的觀測值更新模型。",
+          content: {
+            desc: "真正的對照組 (Benchmark)。在不進行複雜的資料同化技術，僅單純的不斷使用帶有觀測誤差的觀測值（包含兩擺各自之角度、角速度）去更新模擬的雙擺的運動狀態。",
+            result:
+              "我們獲得了比較的基準，之後便能根據此基準評估各種複雜資料同化方法的效果。",
+          },
+        },
+        {
+          id: "exp2",
+          title: "實驗 2: 最佳內插法 (OI)",
+          subtitle: "Optimal Interpolation (OI)",
+          simulationMode: "oi",
+          flowSummary:
+            "使用最佳內插法，結合「帶有觀測誤差的觀測值」與「帶有固定模擬誤差的模擬值」，嘗試降低模擬誤差。",
+          content: {
+            desc: "最佳內插法（OI）假設模擬的誤差永遠保持一致，並根據模擬值的模擬誤差結合觀測值的觀測誤差計算出分析值。",
+            result:
+              "誤差較對照組略微下降，這代表此資料同化技術確實能提升我們對於雙擺系統的掌握。然而，他僅有略為下降，因為觀測的誤差小於模擬的誤差，導致最佳內插法做出的分析也僅是主要在相信觀測，模擬值並無太大的影響力。",
+          },
+        },
+        {
+          id: "exp3",
+          title: "實驗 3: 擴展卡爾曼濾波器",
+          subtitle: "Extended Kalman Filter (EKF)",
+          simulationMode: "ekf_fail",
+          flowSummary:
+            "改用擴展卡爾曼濾波器，結合「帶有觀測誤差的觀測值」與「帶有不固定模擬誤差的模擬值」，嘗試降低模擬誤差。但會因為Filter Divergent而失敗。",
+          content: {
+            desc: "最佳內插法假設模擬的誤差永遠保持一致，卻沒有考量到當雙擺在不同擺動情況下的模擬誤差是不一樣的，因此本實驗改用擴展卡爾曼濾波器進行資料同化，他能動態的計算當次的模擬所具有的模擬誤差，並根據這次模擬值的模擬誤差結合觀測值的觀測誤差計算出分析值。",
+            result:
+              "實驗失敗，誤差很大，甚至乾脆不用同化都還比較好。原因在於 filter divergent。一旦模擬的雙擺偏離了真實的雙擺（例如本實驗 40 秒後），模擬的雙擺還是會因為過度自信，錯誤的認為模擬誤差很小，是觀測的誤差比較大，導致分析值寧願相信模擬也不願意相信觀測，且一直調整不回來，最終模擬的系統對於真實雙擺徹底失去掌握。",
+          },
+        },
+        {
+          id: "exp4",
+          title: "實驗 4: 擴展卡爾曼濾波器 + 模擬誤差倍數膨脹",
+          subtitle: "EKF + Background Covariance Inflation",
+          simulationMode: "ekf_good",
+          flowSummary:
+            "繼續使用擴展卡爾曼濾波器，並引入背景誤差共變異數矩陣倍數膨脹，強迫卡爾曼濾波器多相信觀測一些。",
+          content: {
+            desc: "引入背景誤差共變異數矩陣倍數膨脹。將模擬誤差值手動放大 1.4 倍，強迫資料同化系統認為模擬值不那麼準，多相信觀測一些。",
+            result:
+              "成功收斂。強迫模擬值變得謙虛，多接受觀測資料。本實驗在 146 秒前一直都是相當不錯的結果，然而，146 秒後約有 30 秒的時間模擬失去對真實雙擺的掌握，之後才逐漸重新掌握，此時的問題導致平均誤差在此時迅速被放大。（其他隨機種子不一定會遇到這種很偶然的失去掌握的情況）",
+          },
+        },
+        {
+          id: "exp5",
+          title: "實驗 5: 擴展卡爾曼濾波器 + 模擬誤差倍數膨脹 + 模擬值資料品管",
+          subtitle:
+            "EKF + Background Covariance Inflation + Background Data Quality Control",
+          simulationMode: "ekf_best",
+          flowSummary:
+            "繼續使用擴展卡爾曼濾波器，除膨脹外，加入模擬值資料品管，捨棄異常模擬值。",
+          content: {
+            desc: "除了使用擴展卡爾曼濾波器及背景誤差共變異數矩陣倍數膨脹外，考慮到雖然模擬系統多數時間無太大的問題，但偶爾會進入一個明明模擬已經整個偏離現實了，但他還是繼續參考錯誤的模擬值導致的錯誤（例如前一實驗的 146 秒附近），我們在此實驗中再對模擬值進行資料品質管制。當模擬值與觀測值差異過大時（相差 10 倍觀測誤差），將模擬值視為錯誤資料，捨棄模擬值，並完全相信觀測值。（例如本實驗 108 秒時）",
+            result: "最佳結果，整體誤差是最低的。",
+          },
+        },
+        {
+          id: "exp6",
+          title: "實驗 6: 僅觀測角度",
+          subtitle: "Only Observe Angles",
+          simulationMode: "partial",
+          flowSummary:
+            "模擬真實世界無法觀測所有物理變數的情境，使用實驗五的方法，但只觀測角度、角速度全靠模擬。",
+          content: {
+            desc: "本實驗沿用實驗五的所有技巧，不過考量到真實的大氣觀測並不會有辦法觀測每一個變數，因此嘗試不觀測雙擺的角速度，僅觀測角度的情況，並對角度進行資料同化，角速度完全使用模擬值。",
+            result:
+              "以結果來說算是成功的，雖然只針對角度進行觀測，但在模擬系統中依舊對於角速度有不錯的掌握。在其他的隨機種子中，因角速度必須完全依賴模擬，導致偶爾誤差無法有效被控制住而迅速放大。然而，這也反映了真實大氣科學問題的挑戰，觀測往往無法涵蓋所有必要的變數，這需要更先進的資料同化技術（觀測算子）來克服。",
+          },
+        },
+      ];
+
+      const SIM_MODES = {
+        exp0: "chaos",
+        exp1: "perfect",
+        exp2: "oi",
+        exp3: "ekf_fail",
+        exp4: "ekf_good",
+        exp5: "ekf_best",
+        exp6: "partial",
+      };
+
+      /********************
+       * 公用數學 / 物理函式 *
+       ********************/
+      const toHalfWidth = (str) =>
+        str
+          .replace(/[\uff10-\uff19]/g, (m) =>
+            String.fromCharCode(m.charCodeAt(0) - 0xfee0)
+          )
+          .replace(/[\uff0e\u3002]/g, ".");
+      const mulberry32 = (a) => () => {
+        var t = (a += 0x6d2b79f5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+
+      const flashInput = (el) => {
+        if (!el) return;
+        if (el._inputFlashHandler) {
+          el.removeEventListener("animationend", el._inputFlashHandler);
+          el._inputFlashHandler = null;
+        }
+        el.classList.remove("input-error-flash");
+        void el.offsetWidth;
+        const handler = () => {
+          el.classList.remove("input-error-flash");
+          el.removeEventListener("animationend", handler);
+          el._inputFlashHandler = null;
+        };
+        el._inputFlashHandler = handler;
+        el.classList.add("input-error-flash");
+        el.addEventListener("animationend", handler);
+      };
+
+      const attachNumericValidation = (el) => {
+        if (!el) return;
+        el.addEventListener("input", () => {
+          const converted = toHalfWidth(el.value || "");
+          let sanitized = "";
+          let dotUsed = false;
+          let hadInvalid = false;
+          for (const ch of converted) {
+            if (/[0-9]/.test(ch)) {
+              sanitized += ch;
+              continue;
+            }
+            if (ch === ".") {
+              if (dotUsed) {
+                hadInvalid = true;
+                continue;
+              }
+              dotUsed = true;
+              sanitized += ".";
+              continue;
+            }
+            hadInvalid = true;
+          }
+          if (el.value !== sanitized) {
+            el.value = sanitized;
+          }
+          if (hadInvalid) {
+            flashInput(el);
+          }
+        });
+      };
+
+      const calcAngularDiff = (a, b) =>
+        Math.atan2(Math.sin(a - b), Math.cos(a - b));
+      const radToDeg = (rad) => (rad * 180) / Math.PI;
+
+      const STATE_DIM = 4;
+      const PROCESS_NOISE = [0, 0, 0, 0];
+      const BEC_MATRIX = [
+        [
+          0.047042123630467, -0.012425383299191841, 0.052733861862870594,
+          -0.010091947010408928,
+        ],
+        [
+          -0.012425383299191841, 0.09347302169897373, -0.05417764981902899,
+          0.13105301237279163,
+        ],
+        [
+          0.052733861862870594, -0.05417764981902899, 0.18956395925467978,
+          -0.10866180545223798,
+        ],
+        [
+          -0.010091947010408928, 0.13105301237279163, -0.10866180545223798,
+          0.31312091432860056,
+        ],
+      ];
+      let BEC_OVERRIDE = null;
+      const cloneBECMatrix = () => BEC_MATRIX.map((row) => row.slice());
+
+      const calcEnergies = (t1, t2, w1, w2, config) => {
+        const { g, l1, l2, m1, m2 } = config;
+        const rawPot =
+          -m1 * g * l1 * Math.cos(t1) -
+          m2 * g * (l1 * Math.cos(t1) + l2 * Math.cos(t2));
+        const minPot = -m1 * g * l1 - m2 * g * (l1 + l2);
+        const normalizedPot = rawPot - minPot;
+        const kin =
+          0.5 * m1 * l1 * l1 * w1 * w1 +
+          0.5 *
+            m2 *
+            (l1 * l1 * w1 * w1 +
+              l2 * l2 * w2 * w2 +
+              2 * l1 * l2 * w1 * w2 * Math.cos(t1 - t2));
+        return { pot: normalizedPot, kin: kin, total: normalizedPot + kin };
+      };
+
+      const wrapAngle = (rad) => {
+        let r = rad;
+        while (r > Math.PI) r -= 2 * Math.PI;
+        while (r < -Math.PI) r += 2 * Math.PI;
+        return r;
+      };
+
+      const identityMatrix = (n) => {
+        const m = new Array(n).fill(0).map(() => new Array(n).fill(0));
+        for (let i = 0; i < n; i++) m[i][i] = 1;
+        return m;
+      };
+
+      const cloneMatrix = (A) => A.map((row) => row.slice());
+
+      const matAdd = (A, B) =>
+        A.map((row, i) => row.map((val, j) => val + B[i][j]));
+
+      const matSub = (A, B) =>
+        A.map((row, i) => row.map((val, j) => val - B[i][j]));
+
+      const matMul = (A, B) => {
+        const rows = A.length;
+        const cols = B[0].length;
+        const out = new Array(rows).fill(0).map(() => new Array(cols).fill(0));
+        for (let i = 0; i < rows; i++) {
+          for (let k = 0; k < B.length; k++) {
+            const aik = A[i][k];
+            for (let j = 0; j < cols; j++) {
+              out[i][j] += aik * B[k][j];
+          }
+        }
+      }
+        return out;
+      };
+
+      const matMulVec = (A, v) => {
+        const out = new Array(A.length).fill(0);
+        for (let i = 0; i < A.length; i++) {
+          let sum = 0;
+          for (let j = 0; j < v.length; j++) {
+            sum += A[i][j] * v[j];
+          }
+          out[i] = sum;
+        }
+        return out;
+      };
+
+      const matTranspose = (A) => A[0].map((_, j) => A.map((row) => row[j]));
+
+      const matInverse = (A) => {
+        const n = A.length;
+        const M = A.map((row) => row.slice());
+        const I = identityMatrix(n);
+        for (let i = 0; i < n; i++) {
+          let pivot = M[i][i];
+          let pivotRow = i;
+          for (let r = i + 1; r < n; r++) {
+            if (Math.abs(M[r][i]) > Math.abs(pivot)) {
+              pivot = M[r][i];
+              pivotRow = r;
+            }
+          }
+          if (Math.abs(pivot) < 1e-12) {
+            return null;
+          }
+          if (pivotRow !== i) {
+            [M[i], M[pivotRow]] = [M[pivotRow], M[i]];
+            [I[i], I[pivotRow]] = [I[pivotRow], I[i]];
+          }
+          const pivVal = M[i][i];
+          for (let j = 0; j < n; j++) {
+            M[i][j] /= pivVal;
+            I[i][j] /= pivVal;
+          }
+          for (let r = 0; r < n; r++) {
+            if (r === i) continue;
+            const factor = M[r][i];
+            for (let c = 0; c < n; c++) {
+              M[r][c] -= factor * M[i][c];
+              I[r][c] -= factor * I[i][c];
+            }
+          }
+        }
+        return I;
+      };
+
+      const diagMatrix = (vals) =>
+        vals.map((v, i) => {
+          const row = new Array(vals.length).fill(0);
+          row[i] = v;
+          return row;
+        });
+
+      const defaultCovarianceMatrix = () =>
+        cloneMatrix(BEC_OVERRIDE || cloneBECMatrix());
+
+      const scaleMatrix = (A, factor) =>
+        A ? A.map((row) => row.map((val) => val * factor)) : A;
+
+      const calcAccelerations = (t1, t2, w1, w2, config) => {
+        const { g: G, l1: L1, l2: L2, m1: M1, m2: M2 } = config;
+        const delta = t1 - t2;
+        const den = 2 * M1 + M2 - M2 * Math.cos(2 * delta);
+        const num1 =
+          -G * (2 * M1 + M2) * Math.sin(t1) -
+          M2 * G * Math.sin(t1 - 2 * t2) -
+          2 *
+            Math.sin(delta) *
+            M2 *
+            (w2 * w2 * L2 + w1 * w1 * L1 * Math.cos(delta));
+        const a1 = num1 / (L1 * den);
+        const num2 =
+          2 *
+          Math.sin(delta) *
+          (w1 * w1 * L1 * (M1 + M2) +
+            G * (M1 + M2) * Math.cos(t1) +
+            w2 * w2 * L2 * M2 * Math.cos(delta));
+        const a2 = num2 / (L2 * den);
+        return [a1, a2];
+      };
+
+      const runModelStepForTLM = (vec, energyTarget, config) => {
+        const [theta1, theta2, w1, w2] = vec;
+        const [a1, a2] = calcAccelerations(theta1, theta2, w1, w2, config);
+        let next_w1 = w1 + a1 * config.dt;
+        let next_w2 = w2 + a2 * config.dt;
+        let next_theta1 = theta1 + next_w1 * config.dt;
+        let next_theta2 = theta2 + next_w2 * config.dt;
+        const energy = calcEnergies(
+          next_theta1,
+          next_theta2,
+          next_w1,
+          next_w2,
+          config
+        );
+        const targetEnergy = energyTarget != null ? energyTarget : energy.total;
+        const targetKin = targetEnergy - energy.pot;
+        if (targetKin > 0 && energy.kin > 1e-6) {
+          const scale = Math.sqrt(targetKin / energy.kin);
+          next_w1 *= scale;
+          next_w2 *= scale;
+        }
+        next_theta1 = wrapAngle(next_theta1);
+        next_theta2 = wrapAngle(next_theta2);
+        return [next_theta1, next_theta2, next_w1, next_w2];
+      };
+
+      const computeJacobian = (vec, energyTarget, config) => {
+        const base = runModelStepForTLM(vec, energyTarget, config);
+        const eps = 1e-5;
+        const jac = new Array(STATE_DIM)
+          .fill(0)
+          .map(() => new Array(STATE_DIM).fill(0));
+        for (let i = 0; i < STATE_DIM; i++) {
+          const perturbed = vec.slice();
+          perturbed[i] += eps;
+          const adv = runModelStepForTLM(perturbed, energyTarget, config);
+          for (let j = 0; j < STATE_DIM; j++) {
+            let diff =
+              j < 2 ? calcAngularDiff(adv[j], base[j]) : adv[j] - base[j];
+            jac[j][i] = diff / eps;
+          }
+        }
+        return jac;
+      };
+
+      const propagateCovariance = (jacobian, covariance) => {
+        if (!covariance || !jacobian) return covariance;
+        const JP = matMul(jacobian, covariance);
+        const JPJt = matMul(JP, matTranspose(jacobian));
+        const Q = diagMatrix(PROCESS_NOISE);
+        return matAdd(JPJt, Q);
+      };
+
+      const getMaxPotentialEnergy = (config) => {
+        const { g, l1, l2, m1, m2 } = config;
+        const minPot = -m1 * g * l1 - m2 * g * (l1 + l2);
+        const maxRawPot = m1 * g * l1 + m2 * g * (l1 + l2);
+        return maxRawPot - minPot;
+      };
+
+      const computeCovarianceFromSamples = (samples) => {
+        if (!samples || samples.length === 0) {
+          return defaultCovarianceMatrix();
+        }
+        const n = samples.length;
+        const mean = new Array(STATE_DIM).fill(0);
+        samples.forEach((s) => {
+          for (let i = 0; i < STATE_DIM; i++) mean[i] += s[i];
+        });
+        for (let i = 0; i < STATE_DIM; i++) mean[i] /= n;
+        const cov = new Array(STATE_DIM)
+          .fill(0)
+          .map(() => new Array(STATE_DIM).fill(0));
+        samples.forEach((s) => {
+          for (let i = 0; i < STATE_DIM; i++) {
+            for (let j = 0; j < STATE_DIM; j++) {
+              cov[i][j] += (s[i] - mean[i]) * (s[j] - mean[j]);
+            }
+          }
+        });
+        for (let i = 0; i < STATE_DIM; i++) {
+          for (let j = 0; j < STATE_DIM; j++) {
+            cov[i][j] /= Math.max(1, n - 1);
+            if (i === j && cov[i][j] < 1e-6) {
+              cov[i][j] = 1e-6;
+            }
+          }
+        }
+        return cov;
+      };
+
+      const computeBECForConfig = (config) => {
+        const {
+          dt,
+          simulationDuration,
+          assimilationCycle,
+          initTheta1,
+          initTheta2,
+          randomSeed,
+          l1,
+        } = config;
+        const totalSteps = Math.ceil(simulationDuration / dt);
+        const randFunc = mulberry32(randomSeed + 999);
+        const DEG_TO_RAD = Math.PI / 180;
+        const it1 = initTheta1 * DEG_TO_RAD;
+        const it2 = initTheta2 * DEG_TO_RAD;
+        const initE = calcEnergies(it1, it2, 0, 0, config);
+        const CYCLE_STEPS = Math.round(assimilationCycle / dt);
+
+        let state = {
+          t_step: 0,
+          r_theta1: it1,
+          r_theta2: it2,
+          r_w1: 0,
+          r_w2: 0,
+          m_theta1: it1 + 0.1 * DEG_TO_RAD,
+          m_theta2: it2 + 0.1 * DEG_TO_RAD,
+          m_w1: 0,
+          m_w2: 0,
+          initialEnergy: initE.total,
+          modelCurrentTargetEnergy: initE.total,
+          obsFlash: 0,
+          flashPos: { x1: 0, y1: l1, x2: 0, y2: l1 * 2 },
+          errorCovariance: null,
+        };
+
+        const samples = [];
+        for (let i = 0; i < totalSteps; i++) {
+          const res = computePhysicsStep(state, config, "chaos", randFunc);
+          state = res.newState;
+          const isAssimStep =
+            state.t_step > 0 && state.t_step % CYCLE_STEPS === 0;
+          if (isAssimStep) {
+            samples.push([
+              calcAngularDiff(state.m_theta1, state.r_theta1),
+              calcAngularDiff(state.m_theta2, state.r_theta2),
+              state.m_w1 - state.r_w1,
+              state.m_w2 - state.r_w2,
+            ]);
+          }
+        }
+        return computeCovarianceFromSamples(samples);
+      };
+
+      const covarianceInflation = (
+        B,
+        background,
+        observation,
+        options = {}
+      ) => {
+        const {
+          innovationThreshold = 0.5,
+          inflationFactor = 3,
+          fullObserved = true,
+          obsThetaStd,
+          obsOmegaStd,
+        } = options;
+        const base = cloneMatrix(B);
+        const dTheta1 = background[0] - observation[0];
+        const dTheta2 = background[1] - observation[1];
+        const dW1 = background[2] - observation[2];
+        const dW2 = background[3] - observation[3];
+        const totalInnovation = fullObserved
+          ? Math.sqrt(
+              dTheta1 * dTheta1 + dTheta2 * dTheta2 + dW1 * dW1 + dW2 * dW2
+            )
+          : Math.sqrt(dTheta1 * dTheta1 + dTheta2 * dTheta2);
+
+        const scaleEntry = (i, j, factor) => {
+          base[i][j] *= factor;
+        };
+
+        const qcTriggered = totalInnovation >= innovationThreshold;
+
+        const resetObservedDiagonal = () => {
+          const thetaVar = Number.isFinite(obsThetaStd)
+            ? obsThetaStd * obsThetaStd
+            : null;
+          const omegaVar = Number.isFinite(obsOmegaStd)
+            ? obsOmegaStd * obsOmegaStd
+            : null;
+          const setDiag = (idx, variance) => {
+            if (!Array.isArray(base[idx]) || base[idx][idx] == null) return;
+            if (Number.isFinite(variance)) {
+              base[idx][idx] = variance;
+            }
+          };
+          setDiag(0, thetaVar);
+          setDiag(1, thetaVar);
+          if (fullObserved) {
+            setDiag(2, omegaVar);
+            setDiag(3, omegaVar);
+          }
+        };
+
+        if (!qcTriggered) {
+          return scaleMatrix(base, inflationFactor);
+        }
+        resetObservedDiagonal();
+        if (fullObserved) {
+          return scaleMatrix(base, 1_000_000);
+        }
+
+        for (let i of [0, 1]) {
+          for (let j of [0, 1]) {
+            scaleEntry(i, j, 1_000_000);
+          }
+        }
+
+        scaleEntry(0, 2, inflationFactor * 10);
+        scaleEntry(0, 3, inflationFactor * 10);
+        scaleEntry(1, 2, inflationFactor * 10);
+        scaleEntry(1, 3, inflationFactor * 10);
+
+        scaleEntry(2, 1, inflationFactor);
+        scaleEntry(2, 0, inflationFactor);
+        scaleEntry(3, 0, inflationFactor);
+        scaleEntry(3, 1, inflationFactor);
+
+        scaleEntry(2, 3, inflationFactor);
+        scaleEntry(2, 2, inflationFactor);
+        scaleEntry(3, 2, inflationFactor);
+        scaleEntry(3, 3, inflationFactor);
+
+        return base;
+      };
+
+      const kalmanUpdate = (
+        predVec,
+        obsVec,
+        Pf,
+        obsThetaStd,
+        obsOmegaStd,
+        fullObserved = true
+      ) => {
+        if (!Pf) {
+          return {
+            analysisVec: predVec,
+            analysisCov: null,
+            gain: null,
+          };
+        }
+        const obsVars = fullObserved
+          ? [
+              obsThetaStd * obsThetaStd,
+              obsThetaStd * obsThetaStd,
+              obsOmegaStd * obsOmegaStd,
+              obsOmegaStd * obsOmegaStd,
+            ]
+          : [obsThetaStd * obsThetaStd, obsThetaStd * obsThetaStd];
+        const R = diagMatrix(obsVars);
+        const H = fullObserved
+          ? identityMatrix(STATE_DIM)
+          : [
+              [1, 0, 0, 0],
+              [0, 1, 0, 0],
+            ];
+        const Ht = matTranspose(H);
+        const HB = matMul(H, Pf);
+        const HBHt = matMul(HB, Ht);
+        const S = matAdd(HBHt, R);
+        const SInv = matInverse(S);
+        if (!SInv) {
+          return {
+            analysisVec: predVec,
+            analysisCov: Pf,
+            gain: null,
+          };
+        }
+        const K = matMul(matMul(Pf, Ht), SInv);
+        const projected = matMulVec(H, predVec);
+        const innovation = obsVec.map((val, idx) =>
+          idx < 2 ? calcAngularDiff(val, projected[idx]) : val - projected[idx]
+        );
+        const delta = matMulVec(K, innovation);
+        const analysisVec = predVec.map((val, i) =>
+          i < 2 ? wrapAngle(val + delta[i]) : val + delta[i]
+        );
+        const I = identityMatrix(STATE_DIM);
+        const KH = matMul(K, H);
+        const analysisCov = matMul(matSub(I, KH), Pf);
+        return { analysisVec, analysisCov, gain: K };
+      };
+
+      const isEKFMode = (mode) =>
+        mode === "ekf_fail" ||
+        mode === "ekf_good" ||
+        mode === "ekf_best" ||
+        mode === "partial";
+
+      const sampleObservation = (
+        t1,
+        t2,
+        w1,
+        w2,
+        obsThetaStd,
+        obsOmegaStd,
+        randn
+      ) => ({
+        t1: wrapAngle(t1 + randn() * obsThetaStd),
+        t2: wrapAngle(t2 + randn() * obsThetaStd),
+        w1: w1 + randn() * obsOmegaStd,
+        w2: w2 + randn() * obsOmegaStd,
+      });
+
+      const computePhysicsStep = (s, config, mode, randFunc) => {
+        const {
+          g: G,
+          l1: L1,
+          l2: L2,
+          m1: M1,
+          m2: M2,
+          dt: DT,
+          assimilationCycle: ASSIMILATION_CYCLE,
+          obsErrTheta: OBS_ERR_THETA_DEG,
+          obsErrOmega: OBS_ERR_OMEGA_DEG,
+          backgroundInflation: BG_INFLATION = 1,
+        } = config;
+        const DEG_TO_RAD = Math.PI / 180;
+        const OBS_ERR_THETA = OBS_ERR_THETA_DEG * DEG_TO_RAD;
+        const OBS_ERR_OMEGA = OBS_ERR_OMEGA_DEG * DEG_TO_RAD;
+        const CYCLE_STEPS = Math.round(ASSIMILATION_CYCLE / DT);
+        const bgInflationFactor = BG_INFLATION > 0 ? BG_INFLATION : 1;
+        const isFilterMode = isEKFMode(mode);
+
+        const randn = () => {
+          let u = 0,
+            v = 0;
+          while (u === 0) u = randFunc();
+          while (v === 0) v = randFunc();
+          return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        };
+
+        // nature run
+        const [ra1, ra2] = calcAccelerations(
+          s.r_theta1,
+          s.r_theta2,
+          s.r_w1,
+          s.r_w2,
+          config
+        );
+        let next_r_w1 = s.r_w1 + ra1 * DT;
+        let next_r_w2 = s.r_w2 + ra2 * DT;
+        let next_r_theta1 = s.r_theta1 + next_r_w1 * DT;
+        let next_r_theta2 = s.r_theta2 + next_r_w2 * DT;
+
+        const natureE = calcEnergies(
+          next_r_theta1,
+          next_r_theta2,
+          next_r_w1,
+          next_r_w2,
+          config
+        );
+        const targetKinN = s.initialEnergy - natureE.pot;
+        if (targetKinN > 0 && natureE.kin > 1e-6) {
+          const scale = Math.sqrt(targetKinN / natureE.kin);
+          next_r_w1 *= scale;
+          next_r_w2 *= scale;
+        }
+
+        // model run
+        let [ma1, ma2] = calcAccelerations(
+          s.m_theta1,
+          s.m_theta2,
+          s.m_w1,
+          s.m_w2,
+          config
+        );
+        let next_m_w1 = s.m_w1 + ma1 * DT;
+        let next_m_w2 = s.m_w2 + ma2 * DT;
+        let next_m_theta1 = s.m_theta1 + next_m_w1 * DT;
+        let next_m_theta2 = s.m_theta2 + next_m_w2 * DT;
+
+        const modelE = calcEnergies(
+          next_m_theta1,
+          next_m_theta2,
+          next_m_w1,
+          next_m_w2,
+          config
+        );
+        const targetKinM = s.modelCurrentTargetEnergy - modelE.pot;
+        if (targetKinM > 0 && modelE.kin > 1e-6) {
+          const scaleM = Math.sqrt(targetKinM / modelE.kin);
+          next_m_w1 *= scaleM;
+          next_m_w2 *= scaleM;
+        }
+
+        let obsError = null;
+        let didAssimilate = false;
+        const CYCLE_STEPS_INT = CYCLE_STEPS;
+        let nextObsFlash = Math.max(0, s.obsFlash - 1.0 / (0.2 / DT));
+        let nextModelTargetE = s.modelCurrentTargetEnergy;
+
+        const nextStep = s.t_step + 1;
+        const isAssimilationStep =
+          nextStep > 0 && nextStep % CYCLE_STEPS_INT === 0;
+        const doAssimilation = mode !== "chaos" && isAssimilationStep;
+
+        const nature_x1 = L1 * Math.sin(next_r_theta1);
+        const nature_y1 = L1 * Math.cos(next_r_theta1);
+        const nature_x2 = nature_x1 + L2 * Math.sin(next_r_theta2);
+        const nature_y2 = nature_y1 + L2 * Math.cos(next_r_theta2);
+
+        let nextFlashPos = s.flashPos;
+        const stateVector = [s.m_theta1, s.m_theta2, s.m_w1, s.m_w2];
+        let propagatedCovariance = s.errorCovariance;
+        if (isFilterMode) {
+          const baseCov = s.errorCovariance || defaultCovarianceMatrix();
+          const jacobian = computeJacobian(
+            stateVector,
+            s.modelCurrentTargetEnergy,
+            config
+          );
+          propagatedCovariance = propagateCovariance(jacobian, baseCov);
+        }
+        let nextErrorCovariance = propagatedCovariance || s.errorCovariance;
+        let qcOverrideTriggered = false;
+        let qcOverrideFields = [];
+
+        if (doAssimilation) {
+          didAssimilate = true;
+          nextObsFlash = 1.0;
+          nextFlashPos = {
+            x1: nature_x1,
+            y1: nature_y1,
+            x2: nature_x2,
+            y2: nature_y2,
+          };
+
+          const obs = sampleObservation(
+            next_r_theta1,
+            next_r_theta2,
+            next_r_w1,
+            next_r_w2,
+            OBS_ERR_THETA,
+            OBS_ERR_OMEGA,
+            randn
+          );
+          if (mode === "partial") {
+            obs.w1 = NaN;
+            obs.w2 = NaN;
+          }
+
+          let nt1 = next_m_theta1,
+            nt2 = next_m_theta2,
+            nw1 = next_m_w1,
+            nw2 = next_m_w2;
+
+          if (mode === "perfect") {
+            nt1 = obs.t1;
+            nt2 = obs.t2;
+            nw1 = obs.w1;
+            nw2 = obs.w2;
+          } else if (mode === "oi") {
+            const obsVec = [obs.t1, obs.t2, obs.w1, obs.w2];
+            const predVec = [
+              next_m_theta1,
+              next_m_theta2,
+              next_m_w1,
+              next_m_w2,
+            ];
+            const pf = defaultCovarianceMatrix();
+            const { analysisVec, analysisCov } = kalmanUpdate(
+              predVec,
+              obsVec,
+              pf,
+              OBS_ERR_THETA,
+              OBS_ERR_OMEGA,
+              true
+            );
+            nt1 = analysisVec[0];
+            nt2 = analysisVec[1];
+            nw1 = analysisVec[2];
+            nw2 = analysisVec[3];
+            nextErrorCovariance = analysisCov;
+          } else if (isFilterMode) {
+            const predVec = [
+              next_m_theta1,
+              next_m_theta2,
+              next_m_w1,
+              next_m_w2,
+            ];
+
+            const qcCheck =
+              mode === "ekf_best" || mode === "partial"
+                ? evaluateQCOverrides(
+                    mode,
+                    obs,
+                    {
+                      t1: next_m_theta1,
+                      t2: next_m_theta2,
+                      w1: next_m_w1,
+                      w2: next_m_w2,
+                    },
+                    OBS_ERR_THETA,
+                    OBS_ERR_OMEGA
+                  )
+                : {
+                    qcOverrideTriggered: false,
+                    qcOverrideFields: [],
+                    overrides: {},
+                  };
+            if (mode === "ekf_best" || mode === "partial") {
+              qcOverrideFields = qcCheck.qcOverrideFields;
+              qcOverrideTriggered = qcCheck.qcOverrideTriggered;
+            }
+
+            const obsVecFull = [obs.t1, obs.t2, obs.w1, obs.w2];
+            if (mode === "partial") {
+              obsVecFull[2] = predVec[2];
+              obsVecFull[3] = predVec[3];
+            }
+            const pfBase = propagatedCovariance || defaultCovarianceMatrix();
+            const qcAdjustedBackground =
+              mode === "ekf_best" || mode === "partial"
+                ? applyQCBackgroundDiagonal(
+                    pfBase,
+                    qcOverrideFields,
+                    OBS_ERR_THETA,
+                    OBS_ERR_OMEGA
+                  )
+                : pfBase;
+            let pf = pfBase;
+            if (mode === "ekf_good") {
+              pf = scaleMatrix(pfBase, bgInflationFactor);
+            } else if (mode === "ekf_best" || mode === "partial") {
+              pf = scaleMatrix(
+                qcAdjustedBackground || defaultCovarianceMatrix(),
+                bgInflationFactor
+              );
+            }
+            const { analysisVec, analysisCov } = kalmanUpdate(
+              predVec,
+              mode === "partial" ? obsVecFull.slice(0, 2) : obsVecFull,
+              pf,
+              OBS_ERR_THETA,
+              OBS_ERR_OMEGA,
+              mode !== "partial"
+            );
+            let qcAnalysisVec = analysisVec;
+            let qcAnalysisCov = analysisCov || pf;
+            if (
+              (mode === "ekf_best" || mode === "partial") &&
+              qcOverrideTriggered
+            ) {
+              const overrides = qcCheck.overrides || {};
+              qcAnalysisVec = [
+                overrides.t1 ? wrapAngle(obs.t1) : analysisVec[0],
+                overrides.t2 ? wrapAngle(obs.t2) : analysisVec[1],
+                mode === "partial"
+                  ? next_m_w1
+                  : overrides.w1
+                  ? obs.w1
+                  : analysisVec[2],
+                mode === "partial"
+                  ? next_m_w2
+                  : overrides.w2
+                  ? obs.w2
+                  : analysisVec[3],
+              ];
+              qcAnalysisCov = applyQCCovariance(
+                analysisCov || pf,
+                qcOverrideFields,
+                OBS_ERR_THETA,
+                OBS_ERR_OMEGA
+              );
+            }
+            nt1 = qcAnalysisVec[0];
+            nt2 = qcAnalysisVec[1];
+            nw1 = qcAnalysisVec[2];
+            nw2 = qcAnalysisVec[3];
+            nextErrorCovariance = qcAnalysisCov;
+          }
+
+          next_m_theta1 = nt1;
+          next_m_theta2 = nt2;
+          next_m_w1 = nw1;
+          next_m_w2 = nw2;
+
+          obsError = {
+            t1: calcAngularDiff(next_m_theta1, next_r_theta1),
+            t2: calcAngularDiff(next_m_theta2, next_r_theta2),
+            w1: next_m_w1 - next_r_w1,
+            w2: next_m_w2 - next_r_w2,
+          };
+        }
+
+        return {
+          newState: {
+            t_step: nextStep,
+            r_theta1: next_r_theta1,
+            r_theta2: next_r_theta2,
+            r_w1: next_r_w1,
+            r_w2: next_r_w2,
+            m_theta1: next_m_theta1,
+            m_theta2: next_m_theta2,
+            m_w1: next_m_w1,
+            m_w2: next_m_w2,
+            initialEnergy: s.initialEnergy,
+            modelCurrentTargetEnergy: nextModelTargetE,
+            obsFlash: nextObsFlash,
+            flashPos: nextFlashPos,
+            errorCovariance: isFilterMode
+              ? nextErrorCovariance ||
+                propagatedCovariance ||
+                s.errorCovariance ||
+                defaultCovarianceMatrix()
+              : null,
+          },
+          obsError,
+          didAssimilate,
+          qcOverride: qcOverrideTriggered,
+          qcFields: qcOverrideFields,
+        };
+      };
+
+      const generateExperimentData = (config, mode) => {
+        const {
+          dt,
+          simulationDuration,
+          initTheta1,
+          initTheta2,
+          randomSeed,
+          l1,
+          l2,
+          obsErrTheta,
+          obsErrOmega,
+        } = config;
+        let previousBECOverride = BEC_OVERRIDE;
+        if (mode === "oi") {
+          BEC_OVERRIDE = computeBECForConfig(config);
+        }
+        const totalSteps = Math.ceil(simulationDuration / dt);
+        const randFunc = mulberry32(randomSeed);
+        const DEG_TO_RAD = Math.PI / 180;
+        const obsErrThetaDeg = mode === "chaos" ? 0.1 : obsErrTheta;
+        const obsErrOmegaDeg = mode === "chaos" ? 0.1 : obsErrOmega;
+        const obsThetaStd = obsErrThetaDeg * DEG_TO_RAD;
+        const obsOmegaStd = obsErrOmegaDeg * DEG_TO_RAD;
+        const randn = () => {
+          let u = 0,
+            v = 0;
+          while (u === 0) u = randFunc();
+          while (v === 0) v = randFunc();
+          return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        };
+
+        const it1 = initTheta1 * DEG_TO_RAD;
+        const it2 = initTheta2 * DEG_TO_RAD;
+
+        const initE = calcEnergies(it1, it2, 0, 0, config);
+        const firstObs = sampleObservation(
+          it1,
+          it2,
+          0,
+          0,
+          obsThetaStd,
+          obsOmegaStd,
+          randn
+        );
+
+        let state = {
+          t_step: 0,
+          r_theta1: it1,
+          r_theta2: it2,
+          r_w1: 0,
+          r_w2: 0,
+          m_theta1: firstObs.t1,
+          m_theta2: firstObs.t2,
+          m_w1: firstObs.w1,
+          m_w2: firstObs.w2,
+          initialEnergy: initE.total,
+          modelCurrentTargetEnergy: initE.total,
+          obsFlash: 0,
+          flashPos: { x1: 0, y1: l1, x2: 0, y2: l1 * 2 },
+          errorCovariance: isEKFMode(mode) ? defaultCovarianceMatrix() : null,
+        };
+        if (mode === "chaos") {
+          state.m_theta1 = wrapAngle(state.m_theta1);
+          state.m_theta2 = wrapAngle(state.m_theta2);
+        }
+
+        const startModelE = calcEnergies(
+          state.m_theta1,
+          state.m_theta2,
+          state.m_w1,
+          state.m_w2,
+          config
+        );
+        state.modelCurrentTargetEnergy = startModelE.total;
+
+        const history = [];
+        const errors = { t1: [], t2: [], w1: [], w2: [] };
+
+        const initErr = {
+          t1: calcAngularDiff(state.m_theta1, state.r_theta1),
+          t2: calcAngularDiff(state.m_theta2, state.r_theta2),
+          w1: state.m_w1 - state.r_w1,
+          w2: state.m_w2 - state.r_w2,
+        };
+        errors.t1.push(initErr.t1);
+        errors.t2.push(initErr.t2);
+        errors.w1.push(initErr.w1);
+        errors.w2.push(initErr.w2);
+
+        history.push({
+          t: 0,
+          r: {
+            t1: state.r_theta1,
+            t2: state.r_theta2,
+            w1: state.r_w1,
+            w2: state.r_w2,
+          },
+          m: {
+            t1: state.m_theta1,
+            t2: state.m_theta2,
+            w1: state.m_w1,
+            w2: state.m_w2,
+          },
+          flash: 0,
+          e: {
+            nPE: initE.pot,
+            nKE: initE.kin,
+            mPE: startModelE.pot,
+            mKE: startModelE.kin,
+          },
+          flashPos: state.flashPos,
+          err: initErr,
+          qcOverride: false,
+          qcFields: [],
+        });
+
+        for (let i = 0; i < totalSteps; i++) {
+          const res = computePhysicsStep(state, config, mode, randFunc);
+          state = res.newState;
+
+          const ne = calcEnergies(
+            state.r_theta1,
+            state.r_theta2,
+            state.r_w1,
+            state.r_w2,
+            config
+          );
+          const me = calcEnergies(
+            state.m_theta1,
+            state.m_theta2,
+            state.m_w1,
+            state.m_w2,
+            config
+          );
+          const currentErr = {
+            t1: calcAngularDiff(state.m_theta1, state.r_theta1),
+            t2: calcAngularDiff(state.m_theta2, state.r_theta2),
+            w1: state.m_w1 - state.r_w1,
+            w2: state.m_w2 - state.r_w2,
+          };
+          errors.t1.push(currentErr.t1);
+          errors.t2.push(currentErr.t2);
+          errors.w1.push(currentErr.w1);
+          errors.w2.push(currentErr.w2);
+
+          history.push({
+            t: state.t_step * dt,
+            r: {
+              t1: state.r_theta1,
+              t2: state.r_theta2,
+              w1: state.r_w1,
+              w2: state.r_w2,
+            },
+            m: {
+              t1: state.m_theta1,
+              t2: state.m_theta2,
+              w1: state.m_w1,
+              w2: state.m_w2,
+            },
+            flash: state.obsFlash,
+            e: {
+              nPE: ne.pot,
+              nKE: ne.kin,
+              mPE: me.pot,
+              mKE: me.kin,
+            },
+            flashPos: state.flashPos,
+            err: currentErr,
+            qcOverride: !!res.qcOverride,
+            qcFields: res.qcFields || [],
+          });
+        }
+
+        const spinUpSteps = Math.ceil(SPIN_UP_SECONDS / dt);
+        const spinUpStart = Math.min(
+          errors.t1.length,
+          Math.max(0, spinUpSteps)
+        );
+        const effectiveErrors = {
+          t1: errors.t1.slice(spinUpStart),
+          t2: errors.t2.slice(spinUpStart),
+          w1: errors.w1.slice(spinUpStart),
+          w2: errors.w2.slice(spinUpStart),
+        };
+
+        const calcRMSE = (arr) =>
+          Math.sqrt(arr.reduce((a, b) => a + b * b, 0) / (arr.length || 1));
+
+        const rmse = {
+          t1: calcRMSE(effectiveErrors.t1),
+          t2: calcRMSE(effectiveErrors.t2),
+          w1: calcRMSE(effectiveErrors.w1),
+          w2: calcRMSE(effectiveErrors.w2),
+        };
+
+        if (mode === "oi") {
+          BEC_OVERRIDE = previousBECOverride;
+        }
+
+        const qcEvents = buildQCEvents(history);
+
+        return { history, errors, rmse, qcEvents };
+      };
+
+      const calculateFixedRange = (data) => {
+        if (!data || data.length === 0) return 1.0;
+        const converted = data.map((d) => radToDeg(d));
+        const m = converted.reduce((a, b) => a + b, 0) / converted.length;
+        const v =
+          converted.reduce((a, b) => a + Math.pow(b - m, 2), 0) /
+          converted.length;
+        const s = Math.sqrt(v);
+        return Math.max(s * 3, 0.1);
+      };
+
+      const QC_FIELD_LABELS = {
+        t1: "θ1（擺角 1）",
+        t2: "θ2（擺角 2）",
+        w1: "ω1（角速度 1）",
+        w2: "ω2（角速度 2）",
+      };
+
+      // Collect QC觸發的時間點與被覆蓋的變數，供提示穩定查詢
+      const buildQCEvents = (history) => {
+        if (!history || !history.length) return [];
+        return history
+          .filter(
+            (h) =>
+              h &&
+              h.qcOverride &&
+              Array.isArray(h.qcFields) &&
+              h.qcFields.length
+          )
+          .map((h) => ({
+            t: h.t,
+            fields: h.qcFields.slice(),
+          }));
+      };
+
+      // 找出目前時間點前最近一次、且仍在可顯示時間窗內的QC事件
+      const pickActiveQCEvent = (sim, timeSec, assimilationCycleSec) => {
+        if (!sim) return null;
+        const events =
+          Array.isArray(sim.qcEvents) && sim.qcEvents.length
+            ? sim.qcEvents
+            : buildQCEvents(sim.history || []);
+        if (!events.length) return null;
+        if (!sim.qcEvents || !sim.qcEvents.length) {
+          sim.qcEvents = events;
+        }
+        const displayWindow = Math.max(2, Number(assimilationCycleSec) || 0);
+        for (let i = events.length - 1; i >= 0; i--) {
+          const ev = events[i];
+          if (!ev) continue;
+          if (timeSec + 1e-3 < ev.t) continue;
+          if (timeSec - ev.t <= displayWindow) {
+            return ev;
+          }
+          break;
+        }
+        return null;
+      };
+
+      const describeQCFields = (fields, timeSec) => {
+        if (!Array.isArray(fields) || !fields.length) return "";
+        const names = fields.map((f) => QC_FIELD_LABELS[f] || f);
+        const timeInfo =
+          Number.isFinite(timeSec) && timeSec >= 0
+            ? "t=" + timeSec.toFixed(1) + "s："
+            : "";
+        if (names.length === 1) {
+          return timeInfo + "本輪資料品管改採觀測的 " + names[0] + "。";
+        }
+        const last = names[names.length - 1];
+        const head = names.slice(0, -1).join("、");
+        return (
+          timeInfo + "本輪資料品管改採觀測的 " + head + " 與 " + last + "。"
+        );
+      };
+
+      const evaluateQCOverrides = (
+        mode,
+        obs,
+        modelForecast,
+        obsThetaStd,
+        obsOmegaStd
+      ) => {
+        if (mode !== "ekf_best" && mode !== "partial") {
+          return {
+            qcOverrideTriggered: false,
+            qcOverrideFields: [],
+            overrides: {},
+          };
+        }
+        if (!obs || !modelForecast) {
+          return {
+            qcOverrideTriggered: false,
+            qcOverrideFields: [],
+            overrides: {},
+          };
+        }
+        const thAngle = 10 * obsThetaStd;
+        const thOmega = 10 * obsOmegaStd;
+        const diffs = {
+          t1: Math.abs(calcAngularDiff(obs.t1, modelForecast.t1)),
+          t2: Math.abs(calcAngularDiff(obs.t2, modelForecast.t2)),
+          w1: Math.abs(obs.w1 - modelForecast.w1),
+          w2: Math.abs(obs.w2 - modelForecast.w2),
+        };
+        const overrides = {
+          t1: diffs.t1 > thAngle,
+          t2: diffs.t2 > thAngle,
+          w1:
+            mode !== "partial" &&
+            Number.isFinite(diffs.w1) &&
+            diffs.w1 > thOmega,
+          w2:
+            mode !== "partial" &&
+            Number.isFinite(diffs.w2) &&
+            diffs.w2 > thOmega,
+        };
+        const qcOverrideFields = Object.entries(overrides)
+          .filter(([, v]) => v)
+          .map(([k]) => k);
+        return {
+          qcOverrideTriggered: qcOverrideFields.length > 0,
+          qcOverrideFields,
+          overrides,
+        };
+      };
+
+      const applyQCBackgroundDiagonal = (
+        baseCov,
+        qcFields,
+        obsThetaStd,
+        obsOmegaStd
+      ) => {
+        const cov =
+          cloneMatrix(baseCov || defaultCovarianceMatrix()) ||
+          defaultCovarianceMatrix();
+        if (!Array.isArray(qcFields) || !qcFields.length) return cov;
+        const idxMap = { t1: 0, t2: 1, w1: 2, w2: 3 };
+        const varForField = (f) =>
+          f === "t1" || f === "t2"
+            ? obsThetaStd * obsThetaStd
+            : obsOmegaStd * obsOmegaStd;
+        qcFields.forEach((f) => {
+          const idx = idxMap[f];
+          if (idx == null || !cov[idx]) return;
+          const variance = varForField(f);
+          if (Number.isFinite(variance)) {
+            cov[idx][idx] = variance;
+          }
+        });
+        return cov;
+      };
+
+      const applyQCCovariance = (
+        baseCov,
+        qcFields,
+        obsThetaStd,
+        obsOmegaStd
+      ) => {
+        const cov =
+          cloneMatrix(baseCov || defaultCovarianceMatrix()) ||
+          defaultCovarianceMatrix();
+        if (!Array.isArray(qcFields) || !qcFields.length) return cov;
+        const idxMap = { t1: 0, t2: 1, w1: 2, w2: 3 };
+        const varForField = (f) =>
+          f === "t1" || f === "t2"
+            ? obsThetaStd * obsThetaStd
+            : obsOmegaStd * obsOmegaStd;
+        qcFields.forEach((f) => {
+          const idx = idxMap[f];
+          if (idx == null || !cov[idx]) return;
+          for (let j = 0; j < cov.length; j++) {
+            if (cov[idx]) cov[idx][j] = 0;
+            if (cov[j]) cov[j][idx] = 0;
+          }
+          cov[idx][idx] = varForField(f);
+        });
+        return cov;
+      };
+
+      /*********
+       * App 狀態 *
+       *********/
+      let activeTab = "intro";
+      let config = { ...DEFAULT_CONFIG };
+      let simulationResults = null;
+      let isSimulatingAll = false;
+      let isSetupComplete = false;
+      let elapsed = 0;
+      let isPlaying = true;
+      let playbackReqId = null;
+      let lastTimestamp = null;
+      let lastUpdateSec = 0;
+      let lastFlashTime = -10;
+      let currentSliceErrors = {
+        t1: [],
+        t2: [],
+        w1: [],
+        w2: [],
+      };
+      let isSidebarOpen = false;
+      let isSliderDragging = false;
+      let sliderPlayState = false;
+      let sliderPreviewFrame = null;
+      let pendingSliderTime = null;
+      const isSafari =
+        typeof navigator !== "undefined" &&
+        /^((?!chrome|android).)*safari/i.test(navigator.userAgent || "");
+
+      let configWarningResolver = null;
+      let layoutAdjustFrame = null;
+      const isConfigModified = () =>
+        NUMERIC_CONFIG_KEYS.some((key) => {
+          if (
+            typeof DEFAULT_CONFIG[key] !== "number" ||
+            typeof config[key] !== "number"
+          )
+            return false;
+          return Math.abs(config[key] - DEFAULT_CONFIG[key]) > 1e-6;
+        });
+      function setConfigWarningModalOpen(open) {
+        const modal = configWarningModal();
+        if (!modal) return;
+        modal.dataset.open = open ? "true" : "false";
+      }
+      function resolveConfigWarning(result) {
+        if (!configWarningResolver) {
+          setConfigWarningModalOpen(false);
+          return;
+        }
+        const resolver = configWarningResolver;
+        configWarningResolver = null;
+        setConfigWarningModalOpen(false);
+        resolver(result);
+      }
+      const confirmConfigChange = () => {
+        if (!isConfigModified()) return Promise.resolve(true);
+        return new Promise((resolve) => {
+          const modal = configWarningModal();
+          if (!modal) {
+            resolve(true);
+            return;
+          }
+          configWarningResolver = resolve;
+          setConfigWarningModalOpen(true);
+        });
+      };
+      let fixedRanges = {
+        t1: 1,
+        t2: 1,
+        w1: 1,
+        w2: 1,
+      };
+      let bestMetrics = null;
+      let showModelEnergy = false;
+      let rmseFooterOpen = false;
+
+      /*****************
+       * DOM 參照 (cache) *
+       *****************/
+      const navButtons = () => document.querySelectorAll("[data-exp-id]");
+      const sidebarToggleBtn = () => document.getElementById("sidebar-toggle");
+      const sidebarBackdrop = () => document.getElementById("sidebar-backdrop");
+      const sidebarEl = () => document.getElementById("sidebar");
+      const expSubtitleEl = () => document.getElementById("exp-subtitle");
+      const expTitleEl = () => document.getElementById("exp-title");
+      const setupPanel = () => document.getElementById("setup-panel");
+      const experimentPanel = () => document.getElementById("experiment-panel");
+      const expDescBody = () => document.getElementById("exp-desc-body");
+      const simCol = () => document.getElementById("simulation-column");
+      const statsCol = () => document.getElementById("stats-column");
+      const simStageWrapper = () =>
+        document.getElementById("simulation-stage-wrapper");
+      const introNoticeCard = () => document.getElementById("intro-notice-card");
+      const introFlowCard = () => document.getElementById("intro-flow-card");
+
+      const cfgInputs = () => ({
+        l1: document.getElementById("cfg-l1"),
+        l2: document.getElementById("cfg-l2"),
+        m1: document.getElementById("cfg-m1"),
+        m2: document.getElementById("cfg-m2"),
+        initTheta1: document.getElementById("cfg-initTheta1"),
+        initTheta2: document.getElementById("cfg-initTheta2"),
+        dt: document.getElementById("cfg-dt"),
+        assimilationCycle: document.getElementById("cfg-assim"),
+        obsErrTheta: document.getElementById("cfg-obsErrTheta"),
+        obsErrOmega: document.getElementById("cfg-obsErrOmega"),
+        randomSeed: document.getElementById("cfg-randomSeed"),
+        backgroundInflation: document.getElementById("cfg-bgInflation"),
+      });
+
+      const runSimBtn = () => document.getElementById("run-sim-btn");
+      const playPauseBtn = () => document.getElementById("play-pause-btn");
+      const playPauseIcon = () => document.getElementById("play-pause-icon");
+      const timeSlider = () => document.getElementById("time-slider");
+      const timeDisplay = () => document.getElementById("time-display");
+      const elapsedLabel = () => document.getElementById("elapsed-label");
+      const miniClockHand = () => document.getElementById("mini-clock-hand");
+      const badgeObs = () => document.getElementById("badge-obs");
+      const energyChart = () => document.getElementById("energy-chart");
+      const energyNPE = () => document.getElementById("energy-nPE");
+      const energyNKE = () => document.getElementById("energy-nKE");
+      const energyMPE = () => document.getElementById("energy-mPE");
+      const energyMKE = () => document.getElementById("energy-mKE");
+      const energyMaxLabel = () => document.getElementById("energy-max-label");
+      const toggleModelEnergy = () =>
+        document.getElementById("toggle-model-energy");
+      const simDuration = () => config.simulationDuration;
+
+      const pendSvg = () => document.getElementById("pendulum-svg");
+      const modelLine1 = () => document.getElementById("model-line1");
+      const modelLine2 = () => document.getElementById("model-line2");
+      const modelBob1 = () => document.getElementById("model-bob1");
+      const modelBob2 = () => document.getElementById("model-bob2");
+      const natureLine1 = () => document.getElementById("nature-line1");
+      const natureLine2 = () => document.getElementById("nature-line2");
+      const natureBob1 = () => document.getElementById("nature-bob1");
+      const natureBob2 = () => document.getElementById("nature-bob2");
+      const flashGroup = () => document.getElementById("flash-group");
+      const flash1 = () => document.getElementById("flash-circle1");
+      const flash2 = () => document.getElementById("flash-circle2");
+      const qcAlert = () => document.getElementById("qc-alert");
+      const qcAlertText = () => document.getElementById("qc-alert-text");
+
+      const histContainers = () => ({
+        t1: document.getElementById("hist-t1"),
+        t2: document.getElementById("hist-t2"),
+        w1: document.getElementById("hist-w1"),
+        w2: document.getElementById("hist-w2"),
+      });
+
+      const errorChartSvg = () => document.getElementById("error-chart");
+      const errorT1 = () => document.getElementById("error-t1");
+      const errorT2 = () => document.getElementById("error-t2");
+      const errorMaxTop = () => document.getElementById("error-max-label-top");
+      const errorMaxBottom = () =>
+        document.getElementById("error-max-label-bottom");
+
+      const nextPageBtn = () => document.getElementById("next-page-btn");
+      const nextPageText = () => document.getElementById("next-page-text");
+
+      const rmseFooter = () => document.getElementById("rmse-footer");
+      const rmseFooterToggle = () =>
+        document.getElementById("rmse-footer-toggle");
+      const rmseFooterBody = () => document.getElementById("rmse-footer-body");
+      const rmseFooterHint = () => document.getElementById("rmse-footer-hint");
+      const rmseFooterIcon = () => document.getElementById("rmse-footer-icon");
+      const rmseTableBody = () => document.getElementById("rmse-table-body");
+      const configWarningModal = () =>
+        document.getElementById("config-warning-modal");
+      const configWarningConfirmBtn = () =>
+        document.getElementById("config-warning-confirm");
+      const configWarningCancelBtn = () =>
+        document.getElementById("config-warning-cancel");
+
+      function syncStageHeightVariable() {
+        const wrapper = simStageWrapper();
+        if (!wrapper || wrapper.offsetParent === null) return;
+        const rect = wrapper.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        if (size > 0) {
+          document.documentElement.style.setProperty(
+            "--sim-stage-size",
+            size + "px"
+          );
+        }
+      }
+
+      function adjustStatPanelHeight() {
+        syncStageHeightVariable();
+        const statsEl = statsCol();
+        const simEl = simCol();
+        if (!statsEl || !simEl) return;
+        if (statsEl.offsetParent === null || simEl.offsetParent === null) {
+          statsEl.dataset.compressed = "false";
+          return;
+        }
+        const statsHeight = statsEl.offsetHeight;
+        const simHeight = simEl.offsetHeight;
+        const shouldCompress = statsHeight > simHeight + 8;
+        statsEl.dataset.compressed = shouldCompress ? "true" : "false";
+      }
+
+      function scheduleLayoutAdjust() {
+        if (layoutAdjustFrame != null) return;
+        layoutAdjustFrame = requestAnimationFrame(() => {
+          layoutAdjustFrame = null;
+          adjustStatPanelHeight();
+        });
+      }
+
+      /**************
+       * UI 渲染函式 *
+       **************/
+      function getCurrentExp() {
+        return EXPERIMENTS.find((e) => e.id === activeTab);
+      }
+
+      function getCurrentSimulationData() {
+        if (!simulationResults) return null;
+        const exp = getCurrentExp();
+        if (!exp || !exp.id.startsWith("exp")) return null;
+        return simulationResults[exp.id] || null;
+      }
+
+      function updateConfigInputs() {
+        const inputMap = cfgInputs();
+        inputMap.l1.value = config.l1;
+        inputMap.l2.value = config.l2;
+        inputMap.m1.value = config.m1;
+        inputMap.m2.value = config.m2;
+        inputMap.initTheta1.value = config.initTheta1;
+        inputMap.initTheta2.value = config.initTheta2;
+        inputMap.dt.value = config.dt;
+        inputMap.assimilationCycle.value = config.assimilationCycle;
+        inputMap.obsErrTheta.value = config.obsErrTheta;
+        inputMap.obsErrOmega.value = config.obsErrOmega.toFixed(3);
+        inputMap.randomSeed.value = config.randomSeed;
+        inputMap.backgroundInflation.value = config.backgroundInflation;
+        updateTimeSliderRange();
+      }
+
+      function updateTimeSliderRange() {
+        const slider = timeSlider();
+        if (!slider) return;
+        slider.max = config.simulationDuration;
+      }
+
+      function updateTimeUI() {
+        const duration = simDuration();
+        const slider = timeSlider();
+        if (slider) {
+          slider.value = elapsed.toFixed(1);
+        }
+        const display = timeDisplay();
+        if (display) {
+          display.textContent = elapsed.toFixed(1) + "s / " + duration + "s";
+        }
+        const label = elapsedLabel();
+        if (label) {
+          label.textContent = elapsed.toFixed(0) + "s";
+        }
+        const hand = miniClockHand();
+        if (hand) {
+          const angle = (elapsed / duration) * 360;
+          hand.style.transform =
+            "translate(-50%, -100%) rotate(" + angle.toFixed(1) + "deg)";
+        }
+      }
+
+      function renderNav() {
+        navButtons().forEach((btn) => {
+          const id = btn.dataset.expId;
+          const active = id === activeTab;
+          const locked = !isSetupComplete && id !== "intro" && id !== "setup";
+          let state = "available";
+          if (locked) state = "locked";
+          if (active) state = "active";
+          btn.dataset.state = state;
+          btn.classList.toggle("cursor-not-allowed", locked);
+          const icon = btn.querySelector(".nav-lock-icon");
+          if (icon) {
+            if (locked) {
+              icon.classList.remove("hidden");
+            } else {
+              icon.classList.add("hidden");
+            }
+          }
+        });
+      }
+
+      function renderHeaderAndDesc() {
+        const exp = getCurrentExp();
+        if (!exp) return;
+        expSubtitleEl().textContent = exp.subtitle;
+        expTitleEl().textContent = exp.title;
+
+        const descContainer = expDescBody();
+        descContainer.innerHTML = "";
+
+        if (exp.id === "intro") {
+          const ul = document.createElement("ul");
+          ul.className = "space-y-2 mt-4";
+          exp.content.points.forEach((pt) => {
+            const li = document.createElement("li");
+            li.className =
+              "flex items-start gap-2 bg-slate-50 p-3 rounded text-sm text-slate-600 leading-relaxed";
+            const dot = document.createElement("div");
+            dot.className =
+              "w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5 flex-shrink-0";
+            const span = document.createElement("span");
+            span.innerHTML = pt.replace(
+              /\*\*(.*?)\*\*/g,
+              "<strong>$1</strong>"
+            );
+            li.appendChild(dot);
+            li.appendChild(span);
+            ul.appendChild(li);
+          });
+          descContainer.appendChild(ul);
+        } else if (exp.id === "setup") {
+          const p = document.createElement("p");
+          p.className = "text-slate-600 leading-relaxed text-sm";
+          p.textContent = exp.content.desc;
+          descContainer.appendChild(p);
+        } else {
+          const p1 = document.createElement("p");
+          p1.className = "text-slate-600 leading-relaxed text-sm mb-4";
+          p1.textContent = exp.content.desc;
+          const p2 = document.createElement("div");
+          p2.className =
+            "p-3 rounded-lg text-sm " +
+            (exp.id === "exp3"
+              ? "bg-red-50 text-red-700 border border-red-100"
+              : "bg-slate-50 text-slate-600 border border-slate-100");
+          p2.innerHTML =
+            '<span class="font-semibold">結果：</span> ' + exp.content.result;
+          descContainer.appendChild(p1);
+          descContainer.appendChild(p2);
+        }
+      }
+
+      function renderExperimentFlow() {
+        const container = document.getElementById("exp-flow-body");
+        if (!container) return;
+        const flowExpItems = EXPERIMENTS.filter((exp) => exp.id.startsWith("exp"));
+        container.innerHTML = "";
+        flowExpItems.forEach((exp) => {
+          const block = document.createElement("div");
+          block.className =
+            "space-y-1 border-b border-slate-100 pb-4 last:border-0 last:pb-0";
+
+          const titleRow = document.createElement("div");
+          titleRow.className = "flex flex-col gap-0.5";
+
+          const title = document.createElement("p");
+          title.className = "font-semibold text-slate-800";
+          title.textContent = exp.title;
+
+          titleRow.appendChild(title);
+
+          if (exp.subtitle) {
+            const subtitle = document.createElement("span");
+            subtitle.className =
+              "text-[11px] uppercase tracking-[0.2em] text-slate-400";
+            subtitle.textContent = exp.subtitle;
+            titleRow.appendChild(subtitle);
+          }
+
+          block.appendChild(titleRow);
+
+          const summaryText =
+            exp.flowSummary ||
+            (exp.content && exp.content.desc && exp.content.desc.split("。")[0] + "。");
+          if (summaryText) {
+            const desc = document.createElement("p");
+            desc.className = "text-slate-600 leading-relaxed text-sm";
+            desc.textContent = summaryText;
+            block.appendChild(desc);
+          }
+
+          container.appendChild(block);
+        });
+      }
+
+      function setIntroCardsVisibility(show) {
+        const notice = introNoticeCard();
+        const flow = introFlowCard();
+        if (notice) {
+          notice.style.display = show ? "" : "none";
+        }
+        if (flow) {
+          flow.style.display = show ? "" : "none";
+        }
+      }
+
+      function renderPanelsVisibility() {
+        const exp = getCurrentExp();
+        if (!exp) return;
+        if (exp.id === "setup") {
+          setupPanel().classList.remove("hidden");
+          experimentPanel().classList.add("hidden");
+        } else {
+          setupPanel().classList.add("hidden");
+          experimentPanel().classList.remove("hidden");
+        }
+
+        const introOrSetup = exp.id === "intro" || exp.id === "setup";
+        setIntroCardsVisibility(exp.id === "intro");
+
+        if (introOrSetup) {
+          simCol().classList.add("hidden");
+          statsCol().classList.add("hidden");
+        } else {
+          simCol().classList.remove("hidden");
+          statsCol().classList.remove("hidden");
+        }
+        scheduleLayoutAdjust();
+      }
+
+      function updateNextButton() {
+        const expIndex = EXPERIMENTS.findIndex((e) => e.id === activeTab);
+        const hasNext = expIndex < EXPERIMENTS.length - 1;
+        if (!hasNext) {
+          nextPageBtn().classList.add("hidden");
+          return;
+        }
+        nextPageBtn().classList.remove("hidden");
+        if (activeTab === "setup" && !isSetupComplete) {
+          nextPageBtn().classList.remove("hover:scale-105");
+          nextPageBtn().classList.add("bg-slate-300", "text-slate-500");
+          nextPageText().textContent = "請先確認設定";
+        } else {
+          nextPageBtn().classList.remove("bg-slate-300", "text-slate-500");
+          nextPageBtn().classList.add("bg-indigo-600", "text-white");
+          nextPageText().textContent = "下一頁";
+        }
+      }
+
+      function updateNextButtonPosition() {
+        const btn = nextPageBtn();
+        if (!btn) return;
+        const footerHidden = rmseFooter().classList.contains("hidden");
+        if (footerHidden) {
+          btn.style.bottom = "2.5rem";
+        } else {
+          btn.style.bottom = rmseFooterOpen ? "calc(20rem + 2.5rem)" : "6rem";
+        }
+        const sp = setupPanel();
+        const ep = experimentPanel();
+        const targetPanel =
+          sp && sp.offsetParent !== null
+            ? sp
+            : ep && ep.offsetParent !== null
+            ? ep
+            : document.querySelector(".max-w-7xl");
+        const gapPx = 16;
+        if (targetPanel) {
+          const rect = targetPanel.getBoundingClientRect();
+          const rightSpace = Math.max(
+            window.innerWidth - rect.right + gapPx,
+            gapPx
+          );
+          btn.style.right = rightSpace + "px";
+        } else {
+          btn.style.right = "1.5rem";
+        }
+      }
+
+      function computeBestMetrics() {
+        if (!simulationResults) {
+          bestMetrics = null;
+          return;
+        }
+        const expIds = EXPERIMENTS.filter(
+          (e) => e.id.startsWith("exp") && e.id !== "exp0"
+        ).map((e) => e.id);
+        const mins = {
+          t1: Infinity,
+          t2: Infinity,
+          w1: Infinity,
+          w2: Infinity,
+        };
+        expIds.forEach((id) => {
+          const s = simulationResults[id]?.rmse;
+          if (!s) return;
+          if (s.t1 < mins.t1) mins.t1 = s.t1;
+          if (s.t2 < mins.t2) mins.t2 = s.t2;
+          if (s.w1 < mins.w1) mins.w1 = s.w1;
+          if (s.w2 < mins.w2) mins.w2 = s.w2;
+        });
+        bestMetrics = mins;
+      }
+
+      function renderRMSEFooter() {
+        if (
+          !simulationResults ||
+          !isSetupComplete ||
+          activeTab === "setup" ||
+          activeTab === "intro"
+        ) {
+          rmseFooter().classList.add("hidden");
+          updateNextButtonPosition();
+          return;
+        }
+        rmseFooter().classList.remove("hidden");
+
+        const expRows = EXPERIMENTS.filter(
+          (e) => e.id.startsWith("exp") && e.id !== "exp0"
+        );
+        rmseTableBody().innerHTML = "";
+        expRows.forEach((exp) => {
+          const stat = simulationResults[exp.id]?.rmse;
+          if (!stat) return;
+          const isFail = exp.id === "exp3";
+          const tr = document.createElement("tr");
+          tr.className =
+            "border-b border-slate-50 hover:bg-slate-50" +
+            (activeTab === exp.id ? " bg-indigo-50/50" : "");
+          const tdName = document.createElement("td");
+          tdName.className = "px-4 py-2 font-medium";
+          tdName.textContent = exp.title.split(":")[0];
+          const makeTd = (val, key) => {
+            const td = document.createElement("td");
+            td.className = "px-4 py-2 text-right font-mono";
+            if (bestMetrics && stat[key] === bestMetrics[key]) {
+              td.classList.add("text-emerald-600", "font-bold");
+            }
+            const unit = key === "t1" || key === "t2" ? "°" : "°/s";
+            td.textContent = radToDeg(stat[key]).toFixed(3) + unit;
+            return td;
+          };
+          tr.appendChild(tdName);
+          tr.appendChild(makeTd(stat, "t1"));
+          tr.appendChild(makeTd(stat, "t2"));
+          tr.appendChild(makeTd(stat, "w1"));
+          tr.appendChild(makeTd(stat, "w2"));
+          const tdNote = document.createElement("td");
+          tdNote.className = "px-4 py-2 text-center";
+          tdNote.innerHTML = isFail
+            ? '<span class="text-red-500 font-bold">失敗</span>'
+            : '<span class="text-slate-300">-</span>';
+          tr.appendChild(tdNote);
+          rmseTableBody().appendChild(tr);
+        });
+
+        if (rmseFooterOpen) {
+          rmseFooter().style.height = "20rem";
+          rmseFooterBody().style.height = "16rem";
+          rmseFooterHint().textContent = "(點擊收合)";
+          rmseFooterIcon().setAttribute("data-lucide", "chevron-down");
+        } else {
+          rmseFooter().style.height = "3.5rem";
+          rmseFooterBody().style.height = "0";
+          rmseFooterHint().textContent = "(點擊展開)";
+          rmseFooterIcon().setAttribute("data-lucide", "chevron-up");
+        }
+        lucide.createIcons();
+        updateNextButtonPosition();
+      }
+
+      function renderHistograms() {
+        const histMap = histContainers();
+        if (!currentSliceErrors) return;
+
+        const bench =
+          simulationResults && simulationResults["exp1"]
+            ? simulationResults["exp1"].errors
+            : null;
+
+        const configList = [
+          ["t1", "擺角 1 誤差 (度)"],
+          ["t2", "擺角 2 誤差 (度)"],
+          ["w1", "角速度 1 誤差 (度/秒)"],
+          ["w2", "角速度 2 誤差 (度/秒)"],
+        ];
+
+        configList.forEach(([key]) => {
+          const container = histMap[key];
+          if (!container) return;
+          const sourceData = currentSliceErrors[key] || [];
+          const data = sourceData.map((d) => radToDeg(d));
+          const benchData =
+            activeTab !== "exp1" && bench
+              ? bench[key].map((d) => radToDeg(d))
+              : null;
+          const range = fixedRanges[key] || 1;
+          const svg = container.querySelector("[data-hist-svg]");
+          const meanEl = container.querySelector("[data-mean]");
+          const stdEl = container.querySelector("[data-std]");
+          const minEl = container.querySelector("[data-min]");
+          const maxEl = container.querySelector("[data-max]");
+
+          if (!data.length) {
+            svg.innerHTML = "";
+            meanEl.textContent = "平均: 0.00";
+            stdEl.textContent = "標準差: 0.00";
+            minEl.textContent = `-${range.toFixed(2)}`;
+            maxEl.textContent = `+${range.toFixed(2)}`;
+            return;
+          }
+
+          const m = data.reduce((a, b) => a + b, 0) / data.length;
+          const v =
+            data.reduce((a, b) => a + Math.pow(b - m, 2), 0) / data.length;
+          const s = Math.sqrt(v);
+
+          const binCount = 40;
+          const binSize = (range * 2) / binCount;
+          const bins = new Array(binCount).fill(0);
+          data.forEach((val) => {
+            let c = Math.max(-range, Math.min(range, val));
+            let idx = Math.floor((c + range) / binSize);
+            idx = Math.max(0, Math.min(binCount - 1, idx));
+            bins[idx]++;
+          });
+          let benchBins = null;
+          if (benchData) {
+            benchBins = new Array(binCount).fill(0);
+            benchData.forEach((val) => {
+              let c = Math.max(-range, Math.min(range, val));
+              let idx = Math.floor((c + range) / binSize);
+              idx = Math.max(0, Math.min(binCount - 1, idx));
+              benchBins[idx]++;
+            });
+          }
+          let maxCount = Math.max(...bins, 1);
+          if (benchBins) {
+            maxCount = Math.max(maxCount, ...benchBins);
+          }
+
+          const width = 100 / binCount;
+          svg.innerHTML = "";
+
+          if (benchBins) {
+            benchBins.forEach((count, i) => {
+              const h = (count / maxCount) * 100;
+              const rect = document.createElementNS(
+                "http://www.w3.org/2000/svg",
+                "rect"
+              );
+              rect.setAttribute("x", i * width);
+              rect.setAttribute("y", 100 - h);
+              rect.setAttribute("width", width - 0.5);
+              rect.setAttribute("height", h);
+              rect.setAttribute("fill", "rgba(15,23,42,0.2)");
+              svg.appendChild(rect);
+            });
+          }
+
+          bins.forEach((count, i) => {
+            const h = (count / maxCount) * 100;
+            const rect = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "rect"
+            );
+            rect.setAttribute("x", i * width);
+            rect.setAttribute("y", 100 - h);
+            rect.setAttribute("width", width - 0.5);
+            rect.setAttribute("height", h);
+            let color = "#ef4444";
+            if (key === "t2") color = "#3b82f6";
+            if (key === "w1" || key === "w2") color = "#64748b";
+            rect.setAttribute("fill", color);
+            rect.setAttribute("fill-opacity", "0.8");
+            svg.appendChild(rect);
+          });
+
+          const xPos = (val) =>
+            Math.max(0, Math.min(100, ((val + range) / (2 * range)) * 100));
+
+          const band = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "rect"
+          );
+          band.setAttribute("x", xPos(m - s));
+          band.setAttribute("y", 0);
+          band.setAttribute("width", xPos(m + s) - xPos(m - s));
+          band.setAttribute("height", 100);
+          band.setAttribute("fill", "rgba(15,23,42,0.05)");
+          band.setAttribute("stroke", "rgba(15,23,42,0.1)");
+          band.setAttribute("stroke-width", "0.5");
+          svg.appendChild(band);
+
+          const lineMean = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+          );
+          lineMean.setAttribute("x1", xPos(m));
+          lineMean.setAttribute("x2", xPos(m));
+          lineMean.setAttribute("y1", 0);
+          lineMean.setAttribute("y2", 100);
+          lineMean.setAttribute("stroke", "rgba(15,23,42,0.6)");
+          lineMean.setAttribute("stroke-dasharray", "2 2");
+          svg.appendChild(lineMean);
+
+          const lineZero = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "line"
+          );
+          lineZero.setAttribute("x1", 50);
+          lineZero.setAttribute("x2", 50);
+          lineZero.setAttribute("y1", 0);
+          lineZero.setAttribute("y2", 100);
+          lineZero.setAttribute("stroke", "rgba(148,163,184,0.6)");
+          lineZero.setAttribute("stroke-width", "0.5");
+          svg.appendChild(lineZero);
+
+          meanEl.textContent = "平均: " + m.toFixed(2);
+          stdEl.textContent = "標準差: " + s.toFixed(2);
+          minEl.textContent = "-" + range.toFixed(2);
+          maxEl.textContent = "+" + range.toFixed(2);
+        });
+      }
+
+      function renderErrorChart() {
+        const sim = getCurrentSimulationData();
+        if (!sim || !sim.history.length) {
+          errorT1().setAttribute("points", "");
+          errorT2().setAttribute("points", "");
+          return;
+        }
+        const windowTime = 30;
+        const startT = Math.max(0, elapsed - windowTime);
+        const endT = elapsed + 0.5;
+        const dataPoints = sim.history
+          .filter((s) => s.t >= startT && s.t <= endT)
+          .map((s) => ({
+            t: s.t,
+            t1Err: radToDeg(s.err.t1),
+            t2Err: radToDeg(s.err.t2),
+          }));
+        if (dataPoints.length < 2) {
+          errorT1().setAttribute("points", "");
+          errorT2().setAttribute("points", "");
+          return;
+        }
+        const allVals = dataPoints.flatMap((p) => [p.t1Err, p.t2Err]);
+        const maxVal = Math.max(...allVals.map((v) => Math.abs(v)));
+        const maxY = Math.max(maxVal * 1.25, 1.0);
+        const minY = -maxY;
+        const getPolyline = (accessor) =>
+          dataPoints
+            .map((p) => {
+              const x = ((p.t - startT) / windowTime) * 600;
+              const val = accessor(p);
+              const y = 100 - ((val - minY) / (maxY - minY)) * 100;
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ");
+
+        errorT1().setAttribute(
+          "points",
+          getPolyline((p) => p.t1Err)
+        );
+        errorT2().setAttribute(
+          "points",
+          getPolyline((p) => p.t2Err)
+        );
+        errorMaxTop().textContent = "+" + maxY.toFixed(1) + "°";
+        errorMaxBottom().textContent = "-" + maxY.toFixed(1) + "°";
+      }
+
+      function renderEnergyChart() {
+        const sim = getCurrentSimulationData();
+        if (!sim || !sim.history.length) {
+          energyNPE().setAttribute("points", "");
+          energyNKE().setAttribute("points", "");
+          energyMPE().setAttribute("points", "");
+          energyMKE().setAttribute("points", "");
+          return;
+        }
+        const maxEnergy = getMaxPotentialEnergy(config);
+        energyMaxLabel().textContent = maxEnergy.toFixed(0) + "J (Max)";
+        const windowTime = 30;
+        const startT = Math.max(0, elapsed - windowTime);
+        const endT = elapsed + 0.5;
+        const data = sim.history.filter((d) => d.t >= startT && d.t <= endT);
+        if (data.length < 2) {
+          energyNPE().setAttribute("points", "");
+          energyNKE().setAttribute("points", "");
+          energyMPE().setAttribute("points", "");
+          energyMKE().setAttribute("points", "");
+          return;
+        }
+        const makePoints = (accessor) =>
+          data
+            .map((d) => {
+              const x = ((d.t - startT) / windowTime) * 600;
+              const val = accessor(d.e);
+              const y = 100 - (val / maxEnergy) * 100;
+              return `${x.toFixed(1)},${y.toFixed(1)}`;
+            })
+            .join(" ");
+        energyNPE().setAttribute(
+          "points",
+          makePoints((e) => e.nKE)
+        );
+        energyNKE().setAttribute(
+          "points",
+          makePoints((e) => e.nPE)
+        );
+        if (showModelEnergy) {
+          energyMPE().style.opacity = 0.7;
+          energyMKE().style.opacity = 0.7;
+          energyMPE().setAttribute(
+            "points",
+            makePoints((e) => e.mKE)
+          );
+          energyMKE().setAttribute(
+            "points",
+            makePoints((e) => e.mPE)
+          );
+        } else {
+          energyMPE().style.opacity = 0;
+          energyMKE().style.opacity = 0;
+        }
+      }
+
+      function renderPendulum() {
+        const sim = getCurrentSimulationData();
+        updateTimeUI();
+        if (!sim) {
+          const qa = qcAlert();
+          if (qa) {
+            qa.dataset.visible = "false";
+          }
+          return;
+        }
+        const { history } = sim;
+        if (!history.length) return;
+
+        const { dt, l1, l2 } = config;
+        const idx = Math.min(Math.floor(elapsed / dt), history.length - 1);
+        const s = history[Math.max(0, idx)];
+        const limit = (l1 + l2) * 1.3;
+        const viewBox = `${-limit} ${-limit} ${limit * 2} ${limit * 2}`;
+        pendSvg().setAttribute("viewBox", viewBox);
+
+        const getCoords = (t1, t2) => {
+          if (isNaN(t1) || isNaN(t2)) return { x1: 0, y1: 0, x2: 0, y2: 0 };
+          const x1 = l1 * Math.sin(t1);
+          const y1 = l1 * Math.cos(t1);
+          const x2 = x1 + l2 * Math.sin(t2);
+          const y2 = y1 + l2 * Math.cos(t2);
+          return { x1, y1, x2, y2 };
+        };
+
+        const nature = getCoords(s.r.t1, s.r.t2);
+        const model = getCoords(s.m.t1, s.m.t2);
+
+        modelLine1().setAttribute("x2", model.x1);
+        modelLine1().setAttribute("y2", model.y1);
+        modelLine2().setAttribute("x1", model.x1);
+        modelLine2().setAttribute("y1", model.y1);
+        modelLine2().setAttribute("x2", model.x2);
+        modelLine2().setAttribute("y2", model.y2);
+        modelBob1().setAttribute("cx", model.x1);
+        modelBob1().setAttribute("cy", model.y1);
+        modelBob2().setAttribute("cx", model.x2);
+        modelBob2().setAttribute("cy", model.y2);
+
+        natureLine1().setAttribute("x2", nature.x1);
+        natureLine1().setAttribute("y2", nature.y1);
+        natureLine2().setAttribute("x1", nature.x1);
+        natureLine2().setAttribute("y1", nature.y1);
+        natureLine2().setAttribute("x2", nature.x2);
+        natureLine2().setAttribute("y2", nature.y2);
+        natureBob1().setAttribute("cx", nature.x1);
+        natureBob1().setAttribute("cy", nature.y1);
+        natureBob2().setAttribute("cx", nature.x2);
+        natureBob2().setAttribute("cy", nature.y2);
+
+        if (s.flash > 0.5) {
+          lastFlashTime = elapsed;
+        }
+        const timeSinceFlash = elapsed - lastFlashTime;
+        let flashOpacity = 0;
+        if (timeSinceFlash < 1.5 && timeSinceFlash >= 0) {
+          flashOpacity = (1.5 - timeSinceFlash) / 1.5;
+        }
+        if (flashOpacity > 0.01 && s.flashPos) {
+          flashGroup().setAttribute("opacity", flashOpacity);
+          const baseR = l1 / 15;
+          const r = l1 / 20 + (baseR - l1 / 20) * (1 - flashOpacity);
+          flash1().setAttribute("cx", s.flashPos.x1);
+          flash1().setAttribute("cy", s.flashPos.y1);
+          flash2().setAttribute("cx", s.flashPos.x2);
+          flash2().setAttribute("cy", s.flashPos.y2);
+          flash1().setAttribute("r", r * 1.5);
+          flash2().setAttribute("r", r * 1.5);
+        } else {
+          flashGroup().setAttribute("opacity", 0);
+        }
+
+        const qcEl = qcAlert();
+        if (qcEl) {
+          const qcEvent = pickActiveQCEvent(
+            sim,
+            elapsed,
+            config.assimilationCycle
+          );
+          const shouldShow =
+            qcEvent &&
+            Array.isArray(qcEvent.fields) &&
+            qcEvent.fields.length > 0 &&
+            (activeTab === "exp5" || activeTab === "exp6");
+          qcEl.dataset.visible = shouldShow ? "true" : "false";
+          if (shouldShow) {
+            const textEl = qcAlertText();
+            if (textEl) {
+              textEl.textContent = describeQCFields(qcEvent.fields, qcEvent.t);
+            }
+          }
+        }
+
+        const obsStatsOpacity = flashOpacity;
+        const badge = badgeObs();
+        if (badge) {
+          badge.style.opacity = Math.max(0.2, obsStatsOpacity);
+          if (flashOpacity > 0.05) {
+            badge.classList.remove("badge-obs-flash");
+            void badge.offsetWidth;
+            badge.classList.add("badge-obs-flash");
+          } else {
+            badge.classList.remove("badge-obs-flash");
+          }
+        }
+
+        const angle = (elapsed / simDuration()) * 360;
+        updateTimeUI();
+      }
+
+      function handleTimeSliceUpdate(force = false) {
+        const sim = getCurrentSimulationData();
+        if (!sim) {
+          if (force) {
+            currentSliceErrors = {
+              t1: [],
+              t2: [],
+              w1: [],
+              w2: [],
+            };
+            fixedRanges = {
+              t1: 1,
+              t2: 1,
+              w1: 1,
+              w2: 1,
+            };
+            renderHistograms();
+          }
+          return;
+        }
+        const { errors } = sim;
+        const dt = config.dt || 1;
+        const step = Math.floor(elapsed / dt);
+        const sliceEnd = Math.min(step + 1, errors.t1.length);
+        const spinUpSteps = Math.ceil(SPIN_UP_SECONDS / dt);
+        const sliceStart = Math.min(spinUpSteps, sliceEnd);
+        if (!force && currentSliceErrors.t1.length === sliceEnd) return;
+        if (sliceEnd === 0) {
+          currentSliceErrors = {
+            t1: [],
+            t2: [],
+            w1: [],
+            w2: [],
+          };
+          fixedRanges = {
+            t1: 1,
+            t2: 1,
+            w1: 1,
+            w2: 1,
+          };
+        } else {
+          currentSliceErrors = {
+            t1: errors.t1.slice(sliceStart, sliceEnd),
+            t2: errors.t2.slice(sliceStart, sliceEnd),
+            w1: errors.w1.slice(sliceStart, sliceEnd),
+            w2: errors.w2.slice(sliceStart, sliceEnd),
+          };
+          fixedRanges = {
+            t1: calculateFixedRange(errors.t1.slice(spinUpSteps)),
+            t2: calculateFixedRange(errors.t2.slice(spinUpSteps)),
+            w1: calculateFixedRange(errors.w1.slice(spinUpSteps)),
+            w2: calculateFixedRange(errors.w2.slice(spinUpSteps)),
+          };
+        }
+        renderHistograms();
+      }
+
+      function renderAllDynamic() {
+        renderPendulum();
+        renderEnergyChart();
+        renderErrorChart();
+      }
+
+      function setSidebarOpen(open) {
+        isSidebarOpen = open;
+        const sidebar = sidebarEl();
+        if (sidebar) {
+          sidebar.dataset.open = open ? "true" : "false";
+        }
+        const backdrop = sidebarBackdrop();
+        if (backdrop) {
+          backdrop.dataset.open = open ? "true" : "false";
+        }
+        document.body.classList.toggle("sidebar-open", open);
+        const toggle = sidebarToggleBtn();
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        }
+      }
+
+      function toggleSidebarState() {
+        setSidebarOpen(!isSidebarOpen);
+      }
+
+      function closeSidebar() {
+        if (!isSidebarOpen) return;
+        setSidebarOpen(false);
+      }
+
+      function handleResize() {
+        if (window.innerWidth >= 1024) {
+          closeSidebar();
+        }
+        scheduleLayoutAdjust();
+        updateNextButtonPosition();
+      }
+
+      /*****************
+       * 事件 & 控制邏輯 *
+       *****************/
+      function setActiveTab(id) {
+        const exp = EXPERIMENTS.find((e) => e.id === id);
+        if (!exp) return;
+        if (!isSetupComplete && id !== "intro" && id !== "setup") return;
+        activeTab = id;
+        elapsed = 0;
+        lastUpdateSec = 0;
+        lastFlashTime = -10;
+        timeSlider().value = 0;
+        renderNav();
+        renderPanelsVisibility();
+        renderHeaderAndDesc();
+        renderExperimentFlow();
+        updateNextButton();
+        renderRMSEFooter();
+        renderAllDynamic();
+        handleTimeSliceUpdate(true);
+      }
+
+      async function handleNavClick(e) {
+        const id = e.currentTarget.dataset.expId;
+        if (activeTab === "setup" && id !== "setup") {
+          const ok = await confirmConfigChange();
+          if (!ok) return;
+        }
+        setActiveTab(id);
+        if (window.innerWidth < 1024) {
+          closeSidebar();
+        }
+      }
+
+      function handleConfigInputChange(key, valueStr) {
+        const normalized = toHalfWidth(valueStr || "");
+        const v = parseFloat(normalized);
+        if (Number.isNaN(v)) return;
+        if (key === "obsErrTheta") {
+          config.obsErrTheta = v;
+          config.obsErrOmega = Math.sqrt(2) * v;
+          const obsErrOmegaInput = cfgInputs().obsErrOmega;
+          if (obsErrOmegaInput) {
+            obsErrOmegaInput.value = config.obsErrOmega.toFixed(3);
+          }
+        } else {
+          config[key] = v;
+        }
+        if (key === "simulationDuration") {
+          updateTimeSliderRange();
+        }
+      }
+
+      function runAllSimulations() {
+        if (isSimulatingAll) return;
+        isSimulatingAll = true;
+        runSimBtn().disabled = true;
+        runSimBtn().innerHTML =
+          '<i data-lucide="refresh-ccw" class="w-4 h-4 animate-spin"></i><span>正在預算所有實驗數據...</span>';
+        lucide.createIcons();
+
+        setTimeout(() => {
+          const results = {};
+          Object.entries(SIM_MODES).forEach(([expId, mode]) => {
+            results[expId] = generateExperimentData(config, mode);
+          });
+          simulationResults = results;
+          isSetupComplete = true;
+          isSimulatingAll = false;
+          runSimBtn().disabled = false;
+          runSimBtn().innerHTML =
+            '<i data-lucide="check-circle" class="w-4 h-4"></i><span>重新計算所有實驗</span>';
+          lucide.createIcons();
+          computeBestMetrics();
+          setActiveTab("exp0");
+          renderRMSEFooter();
+        }, 100);
+      }
+
+      async function handleRunSimClick() {
+        if (isSimulatingAll) return;
+        const ok = await confirmConfigChange();
+        if (!ok) return;
+        runAllSimulations();
+      }
+
+      async function nextPage() {
+        const expIndex = EXPERIMENTS.findIndex((e) => e.id === activeTab);
+        if (expIndex < 0) return;
+        if (activeTab === "setup" && !isSetupComplete) return;
+        if (expIndex >= EXPERIMENTS.length - 1) return;
+        const nextExp = EXPERIMENTS[expIndex + 1];
+        if (activeTab === "setup" && nextExp.id !== "setup") {
+          const ok = await confirmConfigChange();
+          if (!ok) return;
+        }
+        setActiveTab(nextExp.id);
+      }
+
+      function setPlayingState(play) {
+        isPlaying = play;
+        playPauseIcon().setAttribute(
+          "data-lucide",
+          isPlaying ? "pause" : "play"
+        );
+        lucide.createIcons();
+      }
+
+      function togglePlay() {
+        setPlayingState(!isPlaying);
+      }
+
+      function clampTimeValue(value) {
+        const duration = simDuration();
+        if (!isFinite(value)) return 0;
+        return Math.max(0, Math.min(duration, value));
+      }
+
+      function applySliderTime(value, fullUpdate) {
+        const clamped = clampTimeValue(value);
+        elapsed = clamped;
+        lastUpdateSec = Math.floor(elapsed);
+        if (fullUpdate) {
+          renderPendulum();
+          handleTimeSliceUpdate();
+          renderEnergyChart();
+          renderErrorChart();
+          return;
+        }
+        renderPendulum();
+        handleTimeSliceUpdate();
+        renderEnergyChart();
+        renderErrorChart();
+      }
+
+      function processSliderPreview() {
+        sliderPreviewFrame = null;
+        if (pendingSliderTime == null) return;
+        applySliderTime(pendingSliderTime, false);
+      }
+
+      function scheduleSliderPreview(value) {
+        pendingSliderTime = value;
+        if (sliderPreviewFrame == null) {
+          sliderPreviewFrame = requestAnimationFrame(processSliderPreview);
+        }
+      }
+
+      function handleSliderChange(e) {
+        const t = parseFloat(e.target.value);
+        if (isSliderDragging) {
+          scheduleSliderPreview(t);
+          return;
+        }
+        applySliderTime(t, true);
+      }
+
+      function handleSliderDragStart() {
+        if (isSliderDragging) return;
+        isSliderDragging = true;
+        sliderPlayState = isPlaying;
+        if (isPlaying) {
+          setPlayingState(false);
+        }
+      }
+
+      function handleSliderDragEnd() {
+        if (!isSliderDragging) return;
+        isSliderDragging = false;
+        if (sliderPreviewFrame != null) {
+          cancelAnimationFrame(sliderPreviewFrame);
+          sliderPreviewFrame = null;
+        }
+        pendingSliderTime = null;
+        const finalValue = parseFloat(timeSlider().value);
+        applySliderTime(finalValue, true);
+        if (sliderPlayState) {
+          setPlayingState(true);
+        }
+        sliderPlayState = false;
+      }
+
+      function playbackLoop(timestamp) {
+        if (lastTimestamp == null) {
+          lastTimestamp = timestamp;
+        }
+        const dt = (timestamp - lastTimestamp) / 1000;
+        lastTimestamp = timestamp;
+        if (isPlaying && getCurrentSimulationData()) {
+          elapsed += dt;
+          if (elapsed >= simDuration()) elapsed = 0;
+          const sec = Math.floor(elapsed);
+          if (sec !== lastUpdateSec) {
+            lastUpdateSec = sec;
+            handleTimeSliceUpdate();
+          }
+          renderAllDynamic();
+        }
+        playbackReqId = requestAnimationFrame(playbackLoop);
+      }
+
+      function toggleRMSEFooter() {
+        rmseFooterOpen = !rmseFooterOpen;
+        renderRMSEFooter();
+      }
+
+      /********
+       * 初始化 *
+       ********/
+      function init() {
+        // icon render
+        lucide.createIcons();
+
+        // nav
+        navButtons().forEach((btn) =>
+          btn.addEventListener("click", handleNavClick)
+        );
+        const toggleBtn = sidebarToggleBtn();
+        if (toggleBtn) {
+          toggleBtn.addEventListener("click", toggleSidebarState);
+        }
+        const backdropEl = sidebarBackdrop();
+        if (backdropEl) {
+          backdropEl.addEventListener("click", closeSidebar);
+        }
+        window.addEventListener("resize", handleResize);
+        const warningConfirm = configWarningConfirmBtn();
+        if (warningConfirm) {
+          warningConfirm.addEventListener("click", () =>
+            resolveConfigWarning(true)
+          );
+        }
+        const warningCancel = configWarningCancelBtn();
+        if (warningCancel) {
+          warningCancel.addEventListener("click", () =>
+            resolveConfigWarning(false)
+          );
+        }
+        const warningModal = configWarningModal();
+        if (warningModal) {
+          warningModal.addEventListener("click", (event) => {
+            if (event.target === warningModal) {
+              resolveConfigWarning(false);
+            }
+          });
+        }
+        window.addEventListener("keydown", (event) => {
+          if (event.key !== "Escape") return;
+          const modal = configWarningModal();
+          if (!modal || modal.dataset.open !== "true") return;
+          event.preventDefault();
+          resolveConfigWarning(false);
+        });
+
+        // config inputs
+        const ims = cfgInputs();
+        ims.l1.addEventListener("input", (e) =>
+          handleConfigInputChange("l1", e.target.value)
+        );
+        ims.l2.addEventListener("input", (e) =>
+          handleConfigInputChange("l2", e.target.value)
+        );
+        ims.m1.addEventListener("input", (e) =>
+          handleConfigInputChange("m1", e.target.value)
+        );
+        ims.m2.addEventListener("input", (e) =>
+          handleConfigInputChange("m2", e.target.value)
+        );
+        ims.initTheta1.addEventListener("input", (e) =>
+          handleConfigInputChange("initTheta1", e.target.value)
+        );
+        ims.initTheta2.addEventListener("input", (e) =>
+          handleConfigInputChange("initTheta2", e.target.value)
+        );
+        ims.dt.addEventListener("input", (e) =>
+          handleConfigInputChange("dt", e.target.value)
+        );
+        ims.assimilationCycle.addEventListener("input", (e) =>
+          handleConfigInputChange("assimilationCycle", e.target.value)
+        );
+        ims.obsErrTheta.addEventListener("input", (e) =>
+          handleConfigInputChange("obsErrTheta", e.target.value)
+        );
+        ims.randomSeed.addEventListener("input", (e) =>
+          handleConfigInputChange("randomSeed", e.target.value)
+        );
+        ims.backgroundInflation.addEventListener("input", (e) =>
+          handleConfigInputChange("backgroundInflation", e.target.value)
+        );
+        document
+          .querySelectorAll("[data-numeric-input]")
+          .forEach(attachNumericValidation);
+
+        updateConfigInputs();
+
+        // run sim
+        runSimBtn().addEventListener("click", handleRunSimClick);
+
+        // play controls
+        playPauseBtn().addEventListener("click", togglePlay);
+        const sliderEl = timeSlider();
+        sliderEl.addEventListener("input", handleSliderChange);
+        sliderEl.addEventListener("pointerdown", handleSliderDragStart);
+        sliderEl.addEventListener("pointerup", handleSliderDragEnd);
+        sliderEl.addEventListener("pointerleave", handleSliderDragEnd);
+        sliderEl.addEventListener("pointercancel", handleSliderDragEnd);
+        sliderEl.addEventListener("mousedown", handleSliderDragStart);
+        sliderEl.addEventListener("mouseup", handleSliderDragEnd);
+        sliderEl.addEventListener("touchstart", handleSliderDragStart, {
+          passive: true,
+        });
+        sliderEl.addEventListener("touchend", handleSliderDragEnd, {
+          passive: true,
+        });
+        toggleModelEnergy().addEventListener("change", (e) => {
+          showModelEnergy = e.target.checked;
+          renderEnergyChart();
+        });
+
+        // next page
+        nextPageBtn().addEventListener("click", nextPage);
+
+        // rmse footer toggle
+        rmseFooterToggle().addEventListener("click", toggleRMSEFooter);
+
+        renderNav();
+        renderHeaderAndDesc();
+        renderPanelsVisibility();
+        renderExperimentFlow();
+        updateNextButton();
+        updateNextButtonPosition();
+
+        playbackReqId = requestAnimationFrame(playbackLoop);
+        scheduleLayoutAdjust();
+      }
+
+      window.addEventListener("load", init);
+    </script>
+  </body>
+</html>
