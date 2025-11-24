@@ -291,8 +291,83 @@
         opacity: 1;
         transform: translate(-50%, 0);
       }
+      .badge-obs-flash {
+        animation: badge-obs-pulse 0.9s ease;
+      }
+      @keyframes badge-obs-pulse {
+        0% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+        50% {
+          transform: scale(1.08);
+          box-shadow: 0 0 0 14px rgba(79, 70, 229, 0.28);
+        }
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+      }
       #next-page-btn {
         right: 1.5rem;
+      }
+      #next-page-btn[data-disabled="true"] {
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+      }
+      #next-page-btn[data-disabled="true"]:hover {
+        background: #e2e8f0;
+      }
+      #run-sim-btn {
+        position: relative;
+        overflow: visible;
+      }
+      @keyframes run-sim-focus {
+        0% {
+          box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+        }
+        50% {
+          box-shadow: 0 0 0 14px rgba(59, 130, 246, 0.25);
+        }
+        100% {
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+        }
+      }
+      @keyframes run-sim-tip {
+        0% {
+          opacity: 0;
+          transform: translate(-50%, 0.25rem) scale(0.95);
+        }
+        30% {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+        100% {
+          opacity: 0;
+          transform: translate(-50%, -0.25rem) scale(0.95);
+        }
+      }
+      #run-sim-btn[data-focus-hint="true"] {
+        animation: run-sim-focus 0.9s ease;
+      }
+      #run-sim-btn[data-focus-hint="true"]::after {
+        content: "請先確認設定並開始實驗";
+        position: absolute;
+        top: -2.5rem;
+        left: 50%;
+        transform: translate(-50%, 0);
+        background: #312e81;
+        color: #fff;
+        font-size: 0.7rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 999px;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.35);
+        white-space: nowrap;
+        pointer-events: none;
+        animation: run-sim-tip 0.9s ease;
       }
     </style>
   </head>
@@ -739,27 +814,30 @@
               id="experiment-panel"
               class="grid grid-cols-1 md:grid-cols-2 gap-8"
             >
-            <div
-              id="intro-notice-card"
-              class="md:col-span-2 bg-amber-50/70 p-5 rounded-xl border border-amber-200 shadow-sm text-xs text-amber-800 leading-relaxed"
-            >
-              <h4 class="text-sm font-semibold mb-2 flex items-center gap-2">
-                <i data-lucide="info" class="w-4 h-4 text-amber-600"></i>
-                頁面重要說明
-              </h4>
-              <p>
-                本頁面使用 Gemini 3 Pro 建立，並且僅根據期末專題簡報 PDF 檔與課程簡報 PDF 檔生成 HTML 程式碼，目的在於檢驗 Gemini 3 Pro 生成式模型的能力。除對原始生成內容小部分修改外，並未對於所生成之資料同化演算法做進一步的檢查。一切實驗方法與結果應依照原始的期末專輯簡報與當時實驗之 python 程式碼為準。
-              </p>
-              <a
-                href="./ori_slides/index.html"
-                target="_blank"
-                rel="noopener"
-                class="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              <div
+                id="intro-notice-card"
+                class="md:col-span-2 bg-amber-50/70 p-5 rounded-xl border border-amber-200 shadow-sm text-xs text-amber-800 leading-relaxed"
               >
-                <i data-lucide="book-open" class="w-3 h-3"></i>
-                查看期末專題簡報
-              </a>
-            </div>
+                <h4 class="text-sm font-semibold mb-2 flex items-center gap-2">
+                  <i data-lucide="info" class="w-4 h-4 text-amber-600"></i>
+                  頁面重要說明
+                </h4>
+                <p>
+                  本頁面使用 Gemini 3 Pro 建立，並且僅根據期末專題簡報 PDF
+                  檔與課程簡報 PDF 檔生成 HTML 程式碼，目的在於檢驗 Gemini 3 Pro
+                  生成式模型的能力。除對原始生成內容小部分修改外，並未對於所生成之資料同化演算法做進一步的檢查。一切實驗方法與結果應依照原始的期末專輯簡報與當時實驗之
+                  python 程式碼為準。
+                </p>
+                <a
+                  href="./ori_slides/index.html"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center gap-2 mt-3 px-3 py-2 rounded-md text-[11px] font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                >
+                  <i data-lucide="book-open" class="w-3 h-3"></i>
+                  查看期末專題簡報
+                </a>
+              </div>
               <!-- 說明卡 -->
               <div
                 class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200"
@@ -771,34 +849,33 @@
                   實驗說明
                 </h3>
 
-              <div
-                id="exp-desc-body"
-                class="space-y-2 mt-4 text-sm text-slate-600 leading-relaxed"
-              >
-                <!-- 由 JS 依 activeTab 填入 -->
+                <div
+                  id="exp-desc-body"
+                  class="space-y-2 mt-4 text-sm text-slate-600 leading-relaxed"
+                >
+                  <!-- 由 JS 依 activeTab 填入 -->
+                </div>
               </div>
-            </div>
 
-            <!-- 實驗流程卡 -->
-            <div
-              id="intro-flow-card"
-              class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200"
-            >
-              <h3
-                class="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-700"
-              >
-                <i data-lucide="map" class="w-4 h-4 text-indigo-500"></i>
-                實驗流程
-              </h3>
-
+              <!-- 實驗流程卡 -->
               <div
-                id="exp-flow-body"
-                class="space-y-4 mt-3 text-sm text-slate-600 leading-relaxed"
+                id="intro-flow-card"
+                class="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200"
               >
-                <!-- 由 JS 依 EXPERIMENTS 填入 -->
-              </div>
-            </div>
+                <h3
+                  class="text-lg font-semibold mb-4 flex items-center gap-2 text-slate-700"
+                >
+                  <i data-lucide="map" class="w-4 h-4 text-indigo-500"></i>
+                  實驗流程
+                </h3>
 
+                <div
+                  id="exp-flow-body"
+                  class="space-y-4 mt-3 text-sm text-slate-600 leading-relaxed"
+                >
+                  <!-- 由 JS 依 EXPERIMENTS 填入 -->
+                </div>
+              </div>
 
               <!-- 左邊：模擬播放 -->
               <div id="simulation-column" class="space-y-6 hidden">
@@ -819,7 +896,7 @@
                         class="px-2 py-1 rounded-md font-bold shadow-sm border bg-amber-50 text-amber-700 border-amber-300"
                         style="opacity: 0.2"
                       >
-                        觀測
+                        對真實擺動進行觀測
                       </div>
                     </div>
                   </div>
@@ -987,13 +1064,13 @@
                           <div class="w-1 h-2 bg-red-500"></div>
                           <div class="w-1 h-2 bg-blue-500"></div>
                         </div>
-                        真實擺動
+                        用來被追蹤的真實擺動
                       </div>
                       <div class="flex items-center gap-2">
                         <div
                           class="w-2 h-2 rounded-full overflow-hidden flex opacity-60 bg-slate-600"
                         ></div>
-                        模擬結果
+                        希望能準確追蹤真實擺動的模擬擺動
                       </div>
                     </div>
 
@@ -1103,13 +1180,13 @@
                       <div
                         class="absolute top-1 right-2 flex gap-3 text-[10px]"
                       >
-                        <span class="flex items-center gap-1 text-blue-500"
-                          ><div class="w-2 h-0.5 bg-blue-500"></div>
-                          總動能</span
-                        >
                         <span class="flex items-center gap-1 text-red-500"
                           ><div class="w-2 h-0.5 bg-red-500"></div>
                           總位能</span
+                        >
+                        <span class="flex items-center gap-1 text-blue-500"
+                          ><div class="w-2 h-0.5 bg-blue-500"></div>
+                          總動能</span
                         >
                       </div>
                       <div
@@ -1179,7 +1256,7 @@
                       >
                         <div class="flex justify-between items-start mb-2">
                           <span class="text-xs font-bold text-slate-700"
-                            >擺角 1 誤差 (度)</span
+                            >擺 1 角度誤差 (度)</span
                           >
                           <div
                             class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
@@ -1215,7 +1292,7 @@
                       >
                         <div class="flex justify-between items-start mb-2">
                           <span class="text-xs font-bold text-slate-700"
-                            >擺角 2 誤差 (度)</span
+                            >擺 2 角度誤差 (度)</span
                           >
                           <div
                             class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
@@ -1251,7 +1328,7 @@
                       >
                         <div class="flex justify-between items-start mb-2">
                           <span class="text-xs font-bold text-slate-700"
-                            >角速度 1 誤差 (度/秒)</span
+                            >擺 1 角速度誤差 (度/秒)</span
                           >
                           <div
                             class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
@@ -1287,7 +1364,7 @@
                       >
                         <div class="flex justify-between items-start mb-2">
                           <span class="text-xs font-bold text-slate-700"
-                            >角速度 2 誤差 (度/秒)</span
+                            >擺 2 角速度誤差 (度/秒)</span
                           >
                           <div
                             class="text-[9px] text-slate-500 text-right font-mono bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100"
@@ -1374,11 +1451,11 @@
                       >
                         <span class="flex items-center gap-1 text-red-500"
                           ><div class="w-2 h-0.5 bg-red-500"></div>
-                          θ1 誤差</span
+                          擺 1 角度誤差</span
                         >
                         <span class="flex items-center gap-1 text-blue-500"
                           ><div class="w-2 h-0.5 bg-blue-500"></div>
-                          θ2 誤差</span
+                          擺 2 角度誤差</span
                         >
                       </div>
                     </div>
@@ -1439,10 +1516,10 @@
                 >
                   <tr>
                     <th class="px-4 py-2">實驗</th>
-                    <th class="px-4 py-2 text-right">θ1 標準差</th>
-                    <th class="px-4 py-2 text-right">θ2 標準差</th>
-                    <th class="px-4 py-2 text-right">ω1 標準差</th>
-                    <th class="px-4 py-2 text-right">ω2 標準差</th>
+                    <th class="px-4 py-2 text-right">擺 1 角度標準差</th>
+                    <th class="px-4 py-2 text-right">擺 2 角度標準差</th>
+                    <th class="px-4 py-2 text-right">擺 1 角速度標準差</th>
+                    <th class="px-4 py-2 text-right">擺 2 角速度標準差</th>
                     <th class="px-4 py-2 text-center">備註</th>
                   </tr>
                 </thead>
@@ -1570,9 +1647,9 @@
           flowSummary:
             "觀測初始狀態後完全依賴物理模型，顯示雙擺具備對初始值敏感的混沌特性。",
           content: {
-            desc: "僅觀測初始狀態（觀測具有觀測誤差），之後完全依賴物理模型進行模擬，並藉此驗證雙擺具有混沌特性。",
+            desc: "僅觀測真實擺動的第 0 秒狀態（觀測具有觀測誤差），之後完全依賴物理模型進行模擬，並藉此驗證雙擺具有混沌特性。",
             result:
-              "驗證了混沌特性。模擬的雙擺即使與真實的雙擺一開始僅差了約 0.1度，約 10 秒後模擬的雙擺徹底無法掌握真實雙擺。",
+              "驗證了混沌特性。模擬的雙擺即使與真實的雙擺一開始僅差了約 0.1 度，約 10 秒後模擬的雙擺徹底無法掌握真實雙擺。",
           },
         },
         {
@@ -1580,8 +1657,7 @@
           title: "實驗 1: 觀測即分析：作為對照組",
           subtitle: "Observation is Analysis: Benchmark Case",
           simulationMode: "perfect",
-          flowSummary:
-            "不斷使用帶有觀測誤差的觀測值更新模型。",
+          flowSummary: "不斷使用帶有觀測誤差的觀測值更新模型。",
           content: {
             desc: "真正的對照組 (Benchmark)。在不進行複雜的資料同化技術，僅單純的不斷使用帶有觀測誤差的觀測值（包含兩擺各自之角度、角速度）去更新模擬的雙擺的運動狀態。",
             result:
@@ -1650,7 +1726,7 @@
           content: {
             desc: "本實驗沿用實驗五的所有技巧，不過考量到真實的大氣觀測並不會有辦法觀測每一個變數，因此嘗試不觀測雙擺的角速度，僅觀測角度的情況，並對角度進行資料同化，角速度完全使用模擬值。",
             result:
-              "以結果來說算是成功的，雖然只針對角度進行觀測，但在模擬系統中依舊對於角速度有不錯的掌握。在其他的隨機種子中，因角速度必須完全依賴模擬，導致偶爾誤差無法有效被控制住而迅速放大。然而，這也反映了真實大氣科學問題的挑戰，觀測往往無法涵蓋所有必要的變數，這需要更先進的資料同化技術（觀測算子）來克服。",
+              "以結果來說算是相當成功的（但並不是每一個隨機種子都會如此成功），雖然只針對角度進行觀測，但在模擬系統中依舊對於角速度有不錯的掌握。在其他的隨機種子中，因角速度必須完全依賴模擬，導致偶爾誤差無法有效被控制住而迅速放大。然而，這也反映了真實大氣科學問題的挑戰，觀測往往無法涵蓋所有必要的變數，這需要更先進的資料同化技術（觀測算子）來克服。",
           },
         },
       ];
@@ -1805,9 +1881,9 @@
             const aik = A[i][k];
             for (let j = 0; j < cols; j++) {
               out[i][j] += aik * B[k][j];
+            }
           }
         }
-      }
         return out;
       };
 
@@ -2922,6 +2998,8 @@
       let sliderPlayState = false;
       let sliderPreviewFrame = null;
       let pendingSliderTime = null;
+      let experimentAutoplayTimeout = null;
+      let runSimHintTimer = null;
       const isSafari =
         typeof navigator !== "undefined" &&
         /^((?!chrome|android).)*safari/i.test(navigator.userAgent || "");
@@ -2990,7 +3068,8 @@
       const statsCol = () => document.getElementById("stats-column");
       const simStageWrapper = () =>
         document.getElementById("simulation-stage-wrapper");
-      const introNoticeCard = () => document.getElementById("intro-notice-card");
+      const introNoticeCard = () =>
+        document.getElementById("intro-notice-card");
       const introFlowCard = () => document.getElementById("intro-flow-card");
 
       const cfgInputs = () => ({
@@ -3242,7 +3321,9 @@
       function renderExperimentFlow() {
         const container = document.getElementById("exp-flow-body");
         if (!container) return;
-        const flowExpItems = EXPERIMENTS.filter((exp) => exp.id.startsWith("exp"));
+        const flowExpItems = EXPERIMENTS.filter((exp) =>
+          exp.id.startsWith("exp")
+        );
         container.innerHTML = "";
         flowExpItems.forEach((exp) => {
           const block = document.createElement("div");
@@ -3270,7 +3351,9 @@
 
           const summaryText =
             exp.flowSummary ||
-            (exp.content && exp.content.desc && exp.content.desc.split("。")[0] + "。");
+            (exp.content &&
+              exp.content.desc &&
+              exp.content.desc.split("。")[0] + "。");
           if (summaryText) {
             const desc = document.createElement("p");
             desc.className = "text-slate-600 leading-relaxed text-sm";
@@ -3291,6 +3374,39 @@
         if (flow) {
           flow.style.display = show ? "" : "none";
         }
+      }
+
+      function highlightRunSimButton() {
+        const btn = runSimBtn();
+        if (!btn) return;
+        btn.scrollIntoView({ behavior: "smooth", block: "center" });
+        btn.setAttribute("data-focus-hint", "true");
+        if (runSimHintTimer) {
+          clearTimeout(runSimHintTimer);
+        }
+        runSimHintTimer = setTimeout(() => {
+          const currentBtn = runSimBtn();
+          if (currentBtn) {
+            currentBtn.removeAttribute("data-focus-hint");
+          }
+          runSimHintTimer = null;
+        }, 1200);
+      }
+
+      function cancelExperimentAutoplay() {
+        if (experimentAutoplayTimeout) {
+          clearTimeout(experimentAutoplayTimeout);
+          experimentAutoplayTimeout = null;
+        }
+      }
+
+      function scheduleExperimentAutoplay(delay = 500) {
+        cancelExperimentAutoplay();
+        setPlayingState(false);
+        experimentAutoplayTimeout = setTimeout(() => {
+          setPlayingState(true);
+          experimentAutoplayTimeout = null;
+        }, delay);
       }
 
       function renderPanelsVisibility() {
@@ -3318,21 +3434,33 @@
       }
 
       function updateNextButton() {
+        const btn = nextPageBtn();
+        const text = nextPageText();
+        if (!btn) return;
         const expIndex = EXPERIMENTS.findIndex((e) => e.id === activeTab);
         const hasNext = expIndex < EXPERIMENTS.length - 1;
         if (!hasNext) {
-          nextPageBtn().classList.add("hidden");
+          btn.classList.add("hidden");
+          btn.removeAttribute("data-disabled");
           return;
         }
-        nextPageBtn().classList.remove("hidden");
+        btn.classList.remove("hidden");
         if (activeTab === "setup" && !isSetupComplete) {
-          nextPageBtn().classList.remove("hover:scale-105");
-          nextPageBtn().classList.add("bg-slate-300", "text-slate-500");
-          nextPageText().textContent = "請先確認設定";
+          btn.dataset.disabled = "true";
+          btn.classList.remove("hover:scale-105", "hover:bg-indigo-700");
+          btn.classList.add("bg-slate-300", "text-slate-500");
+          btn.classList.remove("bg-indigo-600", "text-white");
+          if (text) {
+            text.textContent = "請先確認設定";
+          }
         } else {
-          nextPageBtn().classList.remove("bg-slate-300", "text-slate-500");
-          nextPageBtn().classList.add("bg-indigo-600", "text-white");
-          nextPageText().textContent = "下一頁";
+          btn.removeAttribute("data-disabled");
+          btn.classList.add("hover:scale-105", "hover:bg-indigo-700");
+          btn.classList.remove("bg-slate-300", "text-slate-500");
+          btn.classList.add("bg-indigo-600", "text-white");
+          if (text) {
+            text.textContent = "下一頁";
+          }
         }
       }
 
@@ -3778,14 +3906,26 @@
         if (timeSinceFlash < 1.5 && timeSinceFlash >= 0) {
           flashOpacity = (1.5 - timeSinceFlash) / 1.5;
         }
-        if (flashOpacity > 0.01 && s.flashPos) {
-          flashGroup().setAttribute("opacity", flashOpacity);
+        const obsBadgeHintActive =
+          activeTab.startsWith("exp") && elapsed >= 0 && elapsed < 1;
+        const observationFlashOpacity = obsBadgeHintActive
+          ? Math.max(0, 0.9 - elapsed * 0.9)
+          : 0;
+        const displayFlashOpacity = Math.max(
+          flashOpacity,
+          observationFlashOpacity
+        );
+        const useNatureFlash =
+          obsBadgeHintActive && observationFlashOpacity > flashOpacity;
+        const flashSource = useNatureFlash ? nature : s.flashPos || nature;
+        if (displayFlashOpacity > 0.01 && flashSource) {
+          flashGroup().setAttribute("opacity", displayFlashOpacity);
           const baseR = l1 / 15;
-          const r = l1 / 20 + (baseR - l1 / 20) * (1 - flashOpacity);
-          flash1().setAttribute("cx", s.flashPos.x1);
-          flash1().setAttribute("cy", s.flashPos.y1);
-          flash2().setAttribute("cx", s.flashPos.x2);
-          flash2().setAttribute("cy", s.flashPos.y2);
+          const r = l1 / 20 + (baseR - l1 / 20) * (1 - displayFlashOpacity);
+          flash1().setAttribute("cx", flashSource.x1);
+          flash1().setAttribute("cy", flashSource.y1);
+          flash2().setAttribute("cx", flashSource.x2);
+          flash2().setAttribute("cy", flashSource.y2);
           flash1().setAttribute("r", r * 1.5);
           flash2().setAttribute("r", r * 1.5);
         } else {
@@ -3813,11 +3953,13 @@
           }
         }
 
-        const obsStatsOpacity = flashOpacity;
+        const obsStatsOpacity = displayFlashOpacity;
         const badge = badgeObs();
         if (badge) {
           badge.style.opacity = Math.max(0.2, obsStatsOpacity);
-          if (flashOpacity > 0.05) {
+          const isInitialObservationFlash =
+            obsBadgeHintActive && observationFlashOpacity > flashOpacity;
+          if (displayFlashOpacity > 0.05 && !isInitialObservationFlash) {
             badge.classList.remove("badge-obs-flash");
             void badge.offsetWidth;
             badge.classList.add("badge-obs-flash");
@@ -3947,6 +4089,12 @@
         renderRMSEFooter();
         renderAllDynamic();
         handleTimeSliceUpdate(true);
+        cancelExperimentAutoplay();
+        if (exp.id.startsWith("exp")) {
+          scheduleExperimentAutoplay();
+        } else {
+          setPlayingState(false);
+        }
       }
 
       async function handleNavClick(e) {
@@ -4016,7 +4164,10 @@
       async function nextPage() {
         const expIndex = EXPERIMENTS.findIndex((e) => e.id === activeTab);
         if (expIndex < 0) return;
-        if (activeTab === "setup" && !isSetupComplete) return;
+        if (activeTab === "setup" && !isSetupComplete) {
+          highlightRunSimButton();
+          return;
+        }
         if (expIndex >= EXPERIMENTS.length - 1) return;
         const nextExp = EXPERIMENTS[expIndex + 1];
         if (activeTab === "setup" && nextExp.id !== "setup") {
